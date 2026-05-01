@@ -6,9 +6,22 @@ Generates a detailed, styled Excel report with:
   3. SmartCard raw data per LO (separate sheets)
   4. Renewal 30 Days summary by district
   5. Renewal 30 Days raw data
+
+Supports reading data from:
+  - Local filesystem (default)
+  - Google Drive shared folder (via service account)
+
+Usage:
+  python generate_report.py                          # local mode (default)
+  python generate_report.py --source drive            # drive mode (uses config.json)
+  python generate_report.py --source drive --folder-id <ID> --key service_account.json
 """
 
 import os
+import io
+import json
+import argparse
+import tempfile
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side, numbers
 from openpyxl.utils import get_column_letter
@@ -19,6 +32,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SC_DIR = os.path.join(BASE_DIR, "SmartCard")
 RENEWAL_FILE = os.path.join(BASE_DIR, "Renewal_30days_30th_April.xlsx")
 OUTPUT_FILE = os.path.join(BASE_DIR, "SMS_Consolidated_Report.xlsx")
+CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 
 # --- Styling constants ---
 DARK_BLUE = "1B2A4A"
@@ -82,6 +96,75 @@ RENEWAL_LOC_MAP = {
 DAY_FOLDERS = ["28th April", "29th April", "30th April"]
 
 
+# ---------------------------------------------------------------------------
+#  Google Drive Reader
+# ---------------------------------------------------------------------------
+
+class GoogleDriveReader:
+    """Reads files from a shared Google Drive folder using a service account."""
+
+    def __init__(self, service_account_key_path):
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+
+        creds = service_account.Credentials.from_service_account_file(
+            service_account_key_path,
+            scopes=['https://www.googleapis.com/auth/drive.readonly']
+        )
+        self.service = build('drive', 'v3', credentials=creds)
+        print("   ✅ Google Drive authenticated successfully")
+
+    def list_folders(self, parent_id):
+        """List sub-folders inside a folder. Returns {name: id}."""
+        results = self.service.files().list(
+            q=f"'{parent_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false",
+            fields="files(id, name)",
+            pageSize=100
+        ).execute()
+        return {f['name']: f['id'] for f in results.get('files', [])}
+
+    def list_files(self, parent_id, extension=".xlsx"):
+        """List files inside a folder. Returns [{name, id}]."""
+        results = self.service.files().list(
+            q=f"'{parent_id}' in parents and trashed=false",
+            fields="files(id, name, mimeType)",
+            pageSize=200
+        ).execute()
+        files = results.get('files', [])
+        if extension:
+            files = [f for f in files if f['name'].endswith(extension)]
+        return files
+
+    def download_file(self, file_id):
+        """Download a file and return its content as bytes."""
+        from googleapiclient.http import MediaIoBaseDownload
+        request = self.service.files().get_media(fileId=file_id)
+        buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(buffer, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+        buffer.seek(0)
+        return buffer
+
+    def find_folder(self, parent_id, folder_name):
+        """Find a specific subfolder by name. Returns folder ID or None."""
+        folders = self.list_folders(parent_id)
+        return folders.get(folder_name)
+
+
+def load_config():
+    """Load config.json if it exists."""
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+
+# ---------------------------------------------------------------------------
+#  Styling helpers
+# ---------------------------------------------------------------------------
+
 def style_header_row(ws, row, max_col, font=header_font, fill=header_fill):
     for col in range(1, max_col + 1):
         cell = ws.cell(row=row, column=col)
@@ -107,8 +190,15 @@ def apply_number_format(ws, row, col):
     ws.cell(row=row, column=col).number_format = '#,##0'
 
 
-def read_smartcard_data():
-    """Read all SmartCard Excel files and return structured data."""
+def _parse_xlsx_from_source(source):
+    """Open an openpyxl workbook from a file path (str) or BytesIO buffer."""
+    if isinstance(source, io.BytesIO):
+        return openpyxl.load_workbook(source, read_only=True)
+    return openpyxl.load_workbook(source, read_only=True)
+
+
+def read_smartcard_data_local():
+    """Read all SmartCard Excel files from local filesystem."""
     data = {}  # {lo_name: {day: count, 'raw': {day: [rows]}}}
 
     for day in DAY_FOLDERS:
@@ -142,8 +232,65 @@ def read_smartcard_data():
     return data
 
 
-def read_renewal_data():
-    """Read Renewal 30 days Excel and return structured data."""
+def read_smartcard_data_drive(drive, folder_id):
+    """Read all SmartCard Excel files from Google Drive."""
+    data = {}  # {lo_name: {day: count, 'raw': {day: [rows]}}}
+
+    # Find the SmartCard subfolder
+    sc_folder_id = drive.find_folder(folder_id, "SmartCard")
+    if not sc_folder_id:
+        print("   ⚠️  'SmartCard' folder not found in Drive. Skipping.")
+        return data
+
+    # List day sub-folders
+    day_folders = drive.list_folders(sc_folder_id)
+    print(f"   Found day folders: {list(day_folders.keys())}")
+
+    for day in DAY_FOLDERS:
+        day_folder_id = day_folders.get(day)
+        if not day_folder_id:
+            print(f"   ⚠️  '{day}' folder not found. Skipping.")
+            continue
+
+        files = drive.list_files(day_folder_id, extension=".xlsx")
+        print(f"   📂 {day}: {len(files)} files")
+
+        for f in sorted(files, key=lambda x: x['name']):
+            fname = f['name']
+            key = fname.replace(".xlsx", "")
+            lo_name = LO_NAME_MAP.get(key, key)
+
+            if lo_name not in data:
+                data[lo_name] = {"raw": {}}
+
+            print(f"      ⬇️  Downloading {fname}...")
+            file_buffer = drive.download_file(f['id'])
+            wb = _parse_xlsx_from_source(file_buffer)
+            ws = wb.active
+            rows = []
+            count = 0
+            for i, row in enumerate(ws.iter_rows(values_only=True)):
+                if i == 0:
+                    continue  # skip header
+                rows.append(row)
+                count += 1
+            wb.close()
+
+            data[lo_name][day] = count
+            data[lo_name].setdefault("raw", {})[day] = rows
+
+    return data
+
+
+def read_smartcard_data(source="local", drive=None, folder_id=None):
+    """Read SmartCard data from local or Drive source."""
+    if source == "drive":
+        return read_smartcard_data_drive(drive, folder_id)
+    return read_smartcard_data_local()
+
+
+def read_renewal_data_local():
+    """Read Renewal 30 days Excel from local filesystem."""
     wb = openpyxl.load_workbook(RENEWAL_FILE, read_only=True)
     ws = wb.active
     headers = None
@@ -162,9 +309,53 @@ def read_renewal_data():
             district_counts[dist_name] = district_counts.get(dist_name, 0) + 1
 
     wb.close()
-    # Sort by count descending
     sorted_districts = sorted(district_counts.items(), key=lambda x: -x[1])
     return headers, rows, sorted_districts
+
+
+def read_renewal_data_drive(drive, folder_id):
+    """Read Renewal 30 days Excel from Google Drive."""
+    # Look for a file matching 'Renewal' in the root folder
+    files = drive.list_files(folder_id, extension=".xlsx")
+    renewal_file = None
+    for f in files:
+        if 'renewal' in f['name'].lower() or 'Renewal' in f['name']:
+            renewal_file = f
+            break
+
+    if not renewal_file:
+        print("   ⚠️  No Renewal file found in Drive root. Skipping.")
+        return [], [], []
+
+    print(f"   ⬇️  Downloading {renewal_file['name']}...")
+    file_buffer = drive.download_file(renewal_file['id'])
+    wb = _parse_xlsx_from_source(file_buffer)
+    ws = wb.active
+    headers = None
+    rows = []
+    district_counts = {}
+
+    for i, row in enumerate(ws.iter_rows(values_only=True)):
+        if i == 0:
+            headers = list(row)
+            continue
+        rows.append(list(row))
+        code = row[3]  # application_code_suffix
+        if code and len(str(code)) > 6:
+            loc_code = str(code)[4:7]
+            dist_name = RENEWAL_LOC_MAP.get(loc_code, loc_code)
+            district_counts[dist_name] = district_counts.get(dist_name, 0) + 1
+
+    wb.close()
+    sorted_districts = sorted(district_counts.items(), key=lambda x: -x[1])
+    return headers, rows, sorted_districts
+
+
+def read_renewal_data(source="local", drive=None, folder_id=None):
+    """Read Renewal data from local or Drive source."""
+    if source == "drive":
+        return read_renewal_data_drive(drive, folder_id)
+    return read_renewal_data_local()
 
 
 def create_summary_sheet(wb, sc_data, rn_districts, rn_total):
@@ -427,24 +618,76 @@ def create_renewal_raw_sheet(wb, headers, rows):
     ws.freeze_panes = "A4"
 
 
+def parse_args():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="SMS Campaign — Consolidated Excel Report Generator",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python generate_report.py                                    # local mode
+  python generate_report.py --source drive                     # drive mode (uses config.json)
+  python generate_report.py --source drive --folder-id ABC123  # drive mode with folder ID
+        """
+    )
+    parser.add_argument(
+        '--source', choices=['local', 'drive'], default=None,
+        help='Data source: "local" (filesystem) or "drive" (Google Drive). '
+             'Defaults to config.json value, or "local" if not set.'
+    )
+    parser.add_argument(
+        '--folder-id', default=None,
+        help='Google Drive folder ID containing SmartCard/ and Renewal files.'
+    )
+    parser.add_argument(
+        '--key', default=None,
+        help='Path to Google Service Account JSON key file.'
+    )
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+    config = load_config()
+
+    # Resolve source — CLI overrides config, default is "local"
+    source = args.source or config.get('source', 'local')
+    folder_id = args.folder_id or config.get('drive_folder_id')
+    key_path = args.key or config.get('service_account_key', 'service_account.json')
+
     print("📊 Generating SMS Consolidated Report...")
     print("=" * 50)
+    print(f"   Source: {source.upper()}")
+
+    drive = None
+    if source == 'drive':
+        if not folder_id or folder_id == 'YOUR_FOLDER_ID_HERE':
+            print("❌ Error: Drive folder ID not set.")
+            print("   Set it in config.json or pass --folder-id <ID>")
+            return
+        if not os.path.exists(key_path):
+            print(f"❌ Error: Service account key not found at: {key_path}")
+            print("   Download it from Google Cloud Console and place it in this directory.")
+            print("   Or pass --key <path_to_key.json>")
+            return
+        print(f"   🔑 Using service account: {key_path}")
+        print(f"   📁 Drive folder ID: {folder_id}")
+        drive = GoogleDriveReader(key_path)
 
     # Read data
-    print("📂 Reading SmartCard data...")
-    sc_data = read_smartcard_data()
+    print("\n📂 Reading SmartCard data...")
+    sc_data = read_smartcard_data(source=source, drive=drive, folder_id=folder_id)
     print(f"   Found {len(sc_data)} Labour Offices")
 
     print("📂 Reading Renewal 30 Days data...")
-    rn_headers, rn_rows, rn_districts = read_renewal_data()
+    rn_headers, rn_rows, rn_districts = read_renewal_data(source=source, drive=drive, folder_id=folder_id)
     rn_total = len(rn_rows)
     print(f"   Found {rn_total:,} records across {len(rn_districts)} districts")
 
     # Create workbook
     wb = openpyxl.Workbook()
 
-    print("📝 Creating Summary Dashboard...")
+    print("\n📝 Creating Summary Dashboard...")
     create_summary_sheet(wb, sc_data, rn_districts, rn_total)
 
     print("📝 Creating SmartCard LO detail sheets...")

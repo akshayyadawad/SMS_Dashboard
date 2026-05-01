@@ -3,3 +3,7 @@ SmartCard/
 Renewal_30days_30th_April.xlsx
 __pycache__/
 *.pyc
+service_account.json
+config.json
+.vercel/
+.vercel
