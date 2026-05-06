@@ -58,6 +58,7 @@
       --export-btn-bg: #6366f120;
       --export-btn-border: #6366f150;
       --export-btn-color: #a5b4fc;
+      --calendar-icon-filter: invert(1);
     }
 
     [data-theme="light"] {
@@ -100,6 +101,7 @@
       --export-btn-bg: #4f46e515;
       --export-btn-border: #4f46e540;
       --export-btn-color: #4f46e5;
+      --calendar-icon-filter: invert(0);
     }
 
     body {
@@ -744,6 +746,143 @@
       border-top: 2px solid var(--summary-row-border);
       color: var(--summary-row-color)
     }
+
+    /* Premium Monthly Calendar Styles */
+    .calendar-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 28px;
+      max-width: 450px;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      outline: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--primary);
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    }
+
+    .calendar-month-selector {
+      display: flex;
+      background: var(--toggle-bg);
+      border: 1px solid var(--toggle-border);
+      padding: 4px;
+      border-radius: 10px;
+    }
+
+    .month-btn {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .month-btn:hover {
+      color: var(--text);
+    }
+
+    .month-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+      text-align: center;
+    }
+
+    .calendar-day-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      padding-bottom: 8px;
+    }
+
+    .calendar-cell {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 10px;
+      color: var(--text-dim);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+    }
+
+    .calendar-cell.empty {
+      pointer-events: none;
+    }
+
+    .calendar-cell.disabled {
+      opacity: 0.15;
+      cursor: not-allowed;
+    }
+
+    .calendar-cell.available {
+      color: var(--text);
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .calendar-cell.available:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+    }
+
+    .calendar-cell.active {
+      background: var(--primary) !important;
+      border-color: var(--primary) !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 
@@ -828,15 +967,26 @@
         <div class="section-header">
           <h2>LO-wise Breakdown</h2><span class="tag sc">SmartCard</span>
         </div>
-        <div class="tabs" id="scTabs">
-          <button class="tab active" data-day="all">All Days</button>
-          <button class="tab" data-day="2026-04-28">28 Apr</button>
-          <button class="tab" data-day="2026-04-29">29 Apr</button>
-          <button class="tab" data-day="2026-04-30">30 Apr</button>
-          <button class="tab" data-day="2026-05-03">3 May</button>
-          <button class="tab" data-day="2026-05-04">4 May</button>
-          <button class="tab" data-day="2026-05-05">5 May</button>
-          <button class="tab" data-day="2026-05-06">6 May</button>
+        <div class="calendar-container" id="scCalendar">
+          <div class="calendar-header">
+            <button class="tab-btn active" id="scAllBtn">All Days</button>
+            <div class="calendar-month-selector" id="scMonthSelector">
+              <button class="month-btn" data-month="4">April</button>
+              <button class="month-btn active" data-month="5">May</button>
+            </div>
+          </div>
+          <div class="calendar-grid">
+            <div class="calendar-day-label">Sun</div>
+            <div class="calendar-day-label">Mon</div>
+            <div class="calendar-day-label">Tue</div>
+            <div class="calendar-day-label">Wed</div>
+            <div class="calendar-day-label">Thu</div>
+            <div class="calendar-day-label">Fri</div>
+            <div class="calendar-day-label">Sat</div>
+          </div>
+          <div class="calendar-grid" id="scCalendarCells" style="margin-top: 10px;">
+            <!-- Cells generated dynamically -->
+          </div>
         </div>
         <div class="table-card">
           <table>
@@ -862,27 +1012,26 @@
         <div class="section-header">
           <h2>LO-wise Breakdown</h2><span class="tag rn">Renewal</span>
         </div>
-        <div class="tabs" id="rnTabs">
-          <button class="tab active" data-day="all">All Days</button>
-          <button class="tab" data-day="2026-04-18">18 Apr</button>
-          <button class="tab" data-day="2026-04-19">19 Apr</button>
-          <button class="tab" data-day="2026-04-20">20 Apr</button>
-          <button class="tab" data-day="2026-04-21">21 Apr</button>
-          <button class="tab" data-day="2026-04-22">22 Apr</button>
-          <button class="tab" data-day="2026-04-23">23 Apr</button>
-          <button class="tab" data-day="2026-04-24">24 Apr</button>
-          <button class="tab" data-day="2026-04-25">25 Apr</button>
-          <button class="tab" data-day="2026-04-26">26 Apr</button>
-          <button class="tab" data-day="2026-04-27">27 Apr</button>
-          <button class="tab" data-day="2026-04-28">28 Apr</button>
-          <button class="tab" data-day="2026-04-29">29 Apr</button>
-          <button class="tab" data-day="2026-04-30">30 Apr</button>
-          <button class="tab" data-day="2026-05-01">1 May</button>
-          <button class="tab" data-day="2026-05-02">2 May</button>
-          <button class="tab" data-day="2026-05-03">3 May</button>
-          <button class="tab" data-day="2026-05-04">4 May</button>
-          <button class="tab" data-day="2026-05-05">5 May</button>
-          <button class="tab" data-day="2026-05-06">6 May</button>
+        <div class="calendar-container" id="rnCalendar">
+          <div class="calendar-header">
+            <button class="tab-btn active" id="rnAllBtn">All Days</button>
+            <div class="calendar-month-selector" id="rnMonthSelector">
+              <button class="month-btn" data-month="4">April</button>
+              <button class="month-btn active" data-month="5">May</button>
+            </div>
+          </div>
+          <div class="calendar-grid">
+            <div class="calendar-day-label">Sun</div>
+            <div class="calendar-day-label">Mon</div>
+            <div class="calendar-day-label">Tue</div>
+            <div class="calendar-day-label">Wed</div>
+            <div class="calendar-day-label">Thu</div>
+            <div class="calendar-day-label">Fri</div>
+            <div class="calendar-day-label">Sat</div>
+          </div>
+          <div class="calendar-grid" id="rnCalendarCells" style="margin-top: 10px;">
+            <!-- Cells generated dynamically -->
+          </div>
         </div>
         <div class="table-card">
           <table>
@@ -923,7 +1072,7 @@
     }
 
     // SmartCard Data — by Labour Officer (matched via New_Smartcard_Data.xlsx, ~100% match)
-                const scData = [
+                        const scData = [
   {
     "lo": "LO@Mysore (LO Mysore)",
     "2026-04-28": 25157,
@@ -1193,7 +1342,7 @@
     renderScTable('all');
 
     // Renewal Data — by Labour Officer with day-wise breakdown
-                const rnData = [
+                        const rnData = [
   {
     "lo": "LO@Mysore (LO Mysore)",
     "2026-04-18": 171,
@@ -2231,22 +2380,109 @@
     }
     renderRnTable('all');
 
-    // Tab switching — SmartCard
-    document.querySelectorAll('#scTabs .tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('#scTabs .tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        renderScTable(tab.dataset.day);
+    // Active dates for campaigns
+    const scActiveDays = ["2026-04-28", "2026-04-29", "2026-04-30", "2026-05-03", "2026-05-04", "2026-05-05", "2026-05-06"];
+    const rnActiveDays = [
+      "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-25", "2026-04-26", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30",
+      "2026-05-01", "2026-05-02", "2026-05-03", "2026-05-04", "2026-05-05", "2026-05-06"
+    ];
+
+    // Current selected state
+    let scSelectedDate = 'all';
+    let rnSelectedDate = 'all';
+    let scCurrentMonth = 5; // Default May
+    let rnCurrentMonth = 5; // Default May
+
+    function buildCalendar(campaign, month) {
+      const cellsContainer = document.getElementById(`${campaign}CalendarCells`);
+      cellsContainer.innerHTML = '';
+
+      const activeDays = campaign === 'sc' ? scActiveDays : rnActiveDays;
+      const selectedDate = campaign === 'sc' ? scSelectedDate : rnSelectedDate;
+
+      const numDays = month === 4 ? 30 : 31;
+      const startDay = month === 4 ? 3 : 5; // April starts on Wed (3), May starts on Fri (5)
+
+      // 1. Render empty cells
+      for (let i = 0; i < startDay; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-cell empty';
+        cellsContainer.appendChild(cell);
+      }
+
+      // 2. Render actual day cells
+      for (let d = 1; d <= numDays; d++) {
+        const cell = document.createElement('div');
+        const dayStr = d < 10 ? `0${d}` : `${d}`;
+        const dateStr = `2026-0${month}-${dayStr}`;
+
+        cell.textContent = d;
+
+        if (activeDays.includes(dateStr)) {
+          cell.className = 'calendar-cell available';
+          if (selectedDate === dateStr) {
+            cell.classList.add('active');
+          }
+          cell.addEventListener('click', () => {
+            // Deselect "All Days" button
+            document.getElementById(`${campaign}AllBtn`).classList.remove('active');
+            
+            // Set selected date
+            if (campaign === 'sc') {
+              scSelectedDate = dateStr;
+              renderScTable(dateStr);
+            } else {
+              rnSelectedDate = dateStr;
+              renderRnTable(dateStr);
+            }
+
+            // Redraw calendar cells to update active state
+            buildCalendar(campaign, month);
+          });
+        } else {
+          cell.className = 'calendar-cell disabled';
+        }
+
+        cellsContainer.appendChild(cell);
+      }
+    }
+
+    // Initialize Calendars
+    buildCalendar('sc', 5);
+    buildCalendar('rn', 5);
+
+    // Event listeners for Month Selectors
+    document.querySelectorAll('#scMonthSelector .month-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#scMonthSelector .month-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        scCurrentMonth = parseInt(btn.dataset.month);
+        buildCalendar('sc', scCurrentMonth);
       });
     });
 
-    // Tab switching — Renewal
-    document.querySelectorAll('#rnTabs .tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('#rnTabs .tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        renderRnTable(tab.dataset.day);
+    document.querySelectorAll('#rnMonthSelector .month-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#rnMonthSelector .month-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        rnCurrentMonth = parseInt(btn.dataset.month);
+        buildCalendar('rn', rnCurrentMonth);
       });
+    });
+
+    // Event listeners for All Days buttons
+    document.getElementById('scAllBtn').addEventListener('click', () => {
+      document.getElementById('scAllBtn').classList.add('active');
+      scSelectedDate = 'all';
+      buildCalendar('sc', scCurrentMonth);
+      renderScTable('all');
+    });
+
+    document.getElementById('rnAllBtn').addEventListener('click', () => {
+      document.getElementById('rnAllBtn').classList.add('active');
+      rnSelectedDate = 'all';
+      buildCalendar('rn', rnCurrentMonth);
+      renderRnTable('all');
     });
 
     // Theme toggle logic
