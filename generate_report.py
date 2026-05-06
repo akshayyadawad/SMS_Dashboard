@@ -1,38 +1,33 @@
 """
 SMS Campaign — Consolidated Excel Report Generator
-Generates a detailed, styled Excel report with:
+Cross-references SmartCard/Renewal SMS data with ACTIVE_Registered_Labours_Data.csv
+to produce detailed reports broken down by Labour Officer (LO).
+
+Generates:
   1. Summary Dashboard
   2. SmartCard by LO (day-wise detail)
-  3. SmartCard raw data per LO (separate sheets)
-  4. Renewal 30 Days summary by district
-  5. Renewal 30 Days raw data
-
-Supports reading data from:
-  - Local filesystem (default)
-  - Google Drive shared folder (via service account)
-
-Usage:
-  python generate_report.py                          # local mode (default)
-  python generate_report.py --source drive            # drive mode (uses config.json)
-  python generate_report.py --source drive --folder-id <ID> --key service_account.json
+  3. Renewal by LO (day-wise detail)
+  4. Raw data sheets
+  5. dashboard_data.json for HTML dashboard
 """
 
 import os
-import io
+import csv
 import json
-import argparse
-import tempfile
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side, numbers
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from datetime import datetime
+from functools import lru_cache
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SC_DIR = os.path.join(BASE_DIR, "SmartCard")
-RENEWAL_FILE = os.path.join(BASE_DIR, "Renewal_30days_30th_April.xlsx")
+SC_MASTER_FILE = os.path.join(BASE_DIR, "New_Smartcard_Data.xlsx")
+RENEWAL_FILE = os.path.join(BASE_DIR, "Renewal_30days_from_Apr18.xlsx")
+ACTIVE_FILE = os.path.join(BASE_DIR, "ACTIVE_Registered_Labours_Data.csv")
 OUTPUT_FILE = os.path.join(BASE_DIR, "SMS_Consolidated_Report.xlsx")
-CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
+JSON_FILE = os.path.join(BASE_DIR, "dashboard_data.json")
 
 # --- Styling constants ---
 DARK_BLUE = "1B2A4A"
@@ -40,10 +35,6 @@ MED_BLUE = "2D4373"
 LIGHT_BLUE = "D6E4F0"
 WHITE = "FFFFFF"
 LIGHT_GRAY = "F2F2F2"
-GREEN = "27AE60"
-CYAN = "17A2B8"
-ORANGE = "E67E22"
-RED = "E74C3C"
 
 header_font = Font(name="Calibri", bold=True, color=WHITE, size=12)
 header_fill = PatternFill(start_color=DARK_BLUE, end_color=DARK_BLUE, fill_type="solid")
@@ -67,7 +58,7 @@ center = Alignment(horizontal="center", vertical="center")
 left_align = Alignment(horizontal="left", vertical="center")
 right_align = Alignment(horizontal="right", vertical="center")
 
-# Mapping for LO file names to readable names
+# SmartCard file → LO file label mapping (for reference/fallback)
 LO_NAME_MAP = OrderedDict([
     ("LO1_Makali", "LO1 – Makali"),
     ("LO2_Kengeri", "LO2 – Kengeri"),
@@ -76,94 +67,16 @@ LO_NAME_MAP = OrderedDict([
     ("LO5_RT_Nagar", "LO5 – RT Nagar"),
     ("LO6_Chandapura", "LO6 – Chandapura"),
     ("LO7_Shanti Nagar", "LO7 – Shanti Nagar"),
+    ("LO7_Shanti_Nagar", "LO7 – Shanti Nagar"),
     ("LO8_Jakkur", "LO8 – Jakkur"),
     ("LO_Bng_Rural_Davanahalli", "LO – Devanahalli (Bng Rural)"),
+    ("LO_Bng_Rural_Devanahalli", "LO – Devanahalli (Bng Rural)"),
     ("LO_Mysore", "LO – Mysore"),
     ("Mysore", "LO – Mysore"),
 ])
 
-RENEWAL_LOC_MAP = {
-    'BGM': 'Belagavi', 'DVG': 'Davanagere', 'MYS': 'Mysuru', 'DWR': 'Dharwad',
-    'BLU': 'Ballari', 'HVR': 'Haveri', 'BGK': 'Bagalkot', 'KPL': 'Koppal',
-    'UTK': 'Uttara Kannada', 'TMK': 'Tumakuru', 'CTD': 'Chitradurga', 'KLR': 'Kolar',
-    'SMG': 'Shivamogga', 'DKN': 'Dakshina Kannada', 'RCR': 'Raichur', 'BDR': 'Bidar',
-    'BJR': 'Vijayapura', 'CKM': 'Chikkamagaluru', 'GDG': 'Gadag', 'HSN': 'Hassan',
-    'KLB': 'Kalaburagi', 'CMJ': 'Chamarajanagar', 'VIJ': 'Vijayanagara', 'BLY': 'Bengaluru Rural',
-    'UDP': 'Udupi', 'MND': 'Mandya', 'CBP': 'Chikkaballapur', 'YDR': 'Yadgir',
-    'RMR': 'Ramanagara', 'BLR': 'Bengaluru Urban', '100': 'Unknown (100)', 'MDK': 'Kodagu',
-}
+DAY_FOLDERS = ["28th April", "29th April", "30th April", "3rd May", "4th May", "5th May", "6th May"]
 
-DAY_FOLDERS = ["28th April", "29th April", "30th April"]
-
-
-# ---------------------------------------------------------------------------
-#  Google Drive Reader
-# ---------------------------------------------------------------------------
-
-class GoogleDriveReader:
-    """Reads files from a shared Google Drive folder using a service account."""
-
-    def __init__(self, service_account_key_path):
-        from google.oauth2 import service_account
-        from googleapiclient.discovery import build
-
-        creds = service_account.Credentials.from_service_account_file(
-            service_account_key_path,
-            scopes=['https://www.googleapis.com/auth/drive.readonly']
-        )
-        self.service = build('drive', 'v3', credentials=creds)
-        print("   ✅ Google Drive authenticated successfully")
-
-    def list_folders(self, parent_id):
-        """List sub-folders inside a folder. Returns {name: id}."""
-        results = self.service.files().list(
-            q=f"'{parent_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false",
-            fields="files(id, name)",
-            pageSize=100
-        ).execute()
-        return {f['name']: f['id'] for f in results.get('files', [])}
-
-    def list_files(self, parent_id, extension=".xlsx"):
-        """List files inside a folder. Returns [{name, id}]."""
-        results = self.service.files().list(
-            q=f"'{parent_id}' in parents and trashed=false",
-            fields="files(id, name, mimeType)",
-            pageSize=200
-        ).execute()
-        files = results.get('files', [])
-        if extension:
-            files = [f for f in files if f['name'].endswith(extension)]
-        return files
-
-    def download_file(self, file_id):
-        """Download a file and return its content as bytes."""
-        from googleapiclient.http import MediaIoBaseDownload
-        request = self.service.files().get_media(fileId=file_id)
-        buffer = io.BytesIO()
-        downloader = MediaIoBaseDownload(buffer, request)
-        done = False
-        while not done:
-            _, done = downloader.next_chunk()
-        buffer.seek(0)
-        return buffer
-
-    def find_folder(self, parent_id, folder_name):
-        """Find a specific subfolder by name. Returns folder ID or None."""
-        folders = self.list_folders(parent_id)
-        return folders.get(folder_name)
-
-
-def load_config():
-    """Load config.json if it exists."""
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-
-# ---------------------------------------------------------------------------
-#  Styling helpers
-# ---------------------------------------------------------------------------
 
 def style_header_row(ws, row, max_col, font=header_font, fill=header_fill):
     for col in range(1, max_col + 1):
@@ -186,20 +99,96 @@ def auto_width(ws, min_width=12, max_width=40):
             ws.column_dimensions[col_letter].width = best
 
 
-def apply_number_format(ws, row, col):
-    ws.cell(row=row, column=col).number_format = '#,##0'
+# --- LO Name Formatting ---
+@lru_cache(maxsize=128)
+def format_lo_name(raw_name):
+    if not raw_name or raw_name == "Unmatched":
+        return raw_name
+    
+    bng_mapping = {
+        "LO1@Bng": "Makali",
+        "LO2@Bng": "Kengeri",
+        "LO3@Bng": "Marathalli",
+        "LO4@Bng": "HBR Layout",
+        "LO5@Bng": "RT Nagar",
+        "LO6@Bng": "Chandapura",
+        "LO7@Bng": "Shanti Nagar",
+        "LO8@Bng": "Jakkur"
+    }
+    
+    short = raw_name.split('@')[0]
+    
+    if raw_name in bng_mapping:
+        return f"{raw_name} ({short} {bng_mapping[raw_name]})"
+    
+    # For others like LO@Mysore -> LO@Mysore (LO Mysore)
+    display = raw_name.replace("@", " ")
+    if display.startswith("LO") and len(display) > 2 and display[2].isdigit():
+        return f"{raw_name} ({short} {raw_name.split('@')[-1]})"
+        
+    return f"{raw_name} ({display})"
 
 
-def _parse_xlsx_from_source(source):
-    """Open an openpyxl workbook from a file path (str) or BytesIO buffer."""
-    if isinstance(source, io.BytesIO):
-        return openpyxl.load_workbook(source, read_only=True)
-    return openpyxl.load_workbook(source, read_only=True)
+
+# ─── Data Loading ───
+
+def load_sc_master_data():
+    """Load New_Smartcard_Data.xlsx and build mobile to LO lookup."""
+    mobile_to_lo = {}
+    wb = openpyxl.load_workbook(SC_MASTER_FILE, read_only=True)
+    ws = wb.active
+    for i, row in enumerate(ws.iter_rows(values_only=True)):
+        if i == 0: continue
+        lo = str(row[5]).strip() if row[5] else ""
+        mob = str(row[8]).strip() if row[8] else ""
+        if mob and lo:
+            mobile_to_lo[mob] = lo
+    wb.close()
+    return mobile_to_lo
+
+def load_active_data():
+    """Load ACTIVE_Registered_Labours_Data.csv and build lookup for Renewal."""
+    mobile_to_lo = {}
+
+    if not os.path.exists(ACTIVE_FILE):
+        return {}
+
+    with open(ACTIVE_FILE, "r", encoding="utf-8-sig") as f:
+        reader = csv.reader(f)
+        try:
+            headers = next(reader)
+        except StopIteration:
+            return {}
+
+        mob_idx = -1
+        lo_idx = -1
+        for idx, h in enumerate(headers):
+            h_clean = h.strip().lower()
+            if h_clean in ("mobile_no", "mobile no"):
+                mob_idx = idx
+            elif h_clean in ("labour_officer", "labour officer"):
+                lo_idx = idx
+
+        if mob_idx == -1 or lo_idx == -1:
+            return {}
+
+        for row in reader:
+            if len(row) > max(mob_idx, lo_idx):
+                mob = row[mob_idx].strip()
+                lo = row[lo_idx].strip()
+                if mob and lo:
+                    mobile_to_lo[mob] = lo
+    return mobile_to_lo
 
 
-def read_smartcard_data_local():
-    """Read all SmartCard Excel files from local filesystem."""
-    data = {}  # {lo_name: {day: count, 'raw': {day: [rows]}}}
+def read_smartcard_data(mobile_to_lo):
+    """Read SmartCard files and aggregate by Labour Officer."""
+    # lo_day_counts: {lo: {day: count}}
+    lo_day_counts = defaultdict(lambda: defaultdict(int))
+    # file-level counts for reference
+    file_day_counts = defaultdict(lambda: defaultdict(int))
+    unmatched_day = defaultdict(int)
+    total_per_day = defaultdict(int)
 
     for day in DAY_FOLDERS:
         day_path = os.path.join(SC_DIR, day)
@@ -209,156 +198,73 @@ def read_smartcard_data_local():
             if not fname.endswith(".xlsx") or fname.startswith("."):
                 continue
             key = fname.replace(".xlsx", "")
-            lo_name = LO_NAME_MAP.get(key, key)
-
-            if lo_name not in data:
-                data[lo_name] = {"raw": {}}
+            file_label = LO_NAME_MAP.get(key, key)
 
             fpath = os.path.join(day_path, fname)
             wb = openpyxl.load_workbook(fpath, read_only=True)
             ws = wb.active
-            rows = []
-            count = 0
             for i, row in enumerate(ws.iter_rows(values_only=True)):
                 if i == 0:
-                    continue  # skip header
-                rows.append(row)
-                count += 1
+                    continue
+                mob_raw = row[0]
+                mob = str(int(mob_raw)) if isinstance(mob_raw, (int, float)) else str(mob_raw).strip()
+                lo_raw = mobile_to_lo.get(mob, "")
+                total_per_day[day] += 1
+                if lo_raw:
+                    lo = format_lo_name(lo_raw)
+                    lo_day_counts[lo][day] += 1
+                else:
+                    unmatched_day[day] += 1
+                file_day_counts[file_label][day] += 1
             wb.close()
 
-            data[lo_name][day] = count
-            data[lo_name].setdefault("raw", {})[day] = rows
-
-    return data
+    return dict(lo_day_counts), dict(file_day_counts), dict(unmatched_day), dict(total_per_day)
 
 
-def read_smartcard_data_drive(drive, folder_id):
-    """Read all SmartCard Excel files from Google Drive."""
-    data = {}  # {lo_name: {day: count, 'raw': {day: [rows]}}}
-
-    # Find the SmartCard subfolder
-    sc_folder_id = drive.find_folder(folder_id, "SmartCard")
-    if not sc_folder_id:
-        print("   ⚠️  'SmartCard' folder not found in Drive. Skipping.")
-        return data
-
-    # List day sub-folders
-    day_folders = drive.list_folders(sc_folder_id)
-    print(f"   Found day folders: {list(day_folders.keys())}")
-
-    for day in DAY_FOLDERS:
-        day_folder_id = day_folders.get(day)
-        if not day_folder_id:
-            print(f"   ⚠️  '{day}' folder not found. Skipping.")
-            continue
-
-        files = drive.list_files(day_folder_id, extension=".xlsx")
-        print(f"   📂 {day}: {len(files)} files")
-
-        for f in sorted(files, key=lambda x: x['name']):
-            fname = f['name']
-            key = fname.replace(".xlsx", "")
-            lo_name = LO_NAME_MAP.get(key, key)
-
-            if lo_name not in data:
-                data[lo_name] = {"raw": {}}
-
-            print(f"      ⬇️  Downloading {fname}...")
-            file_buffer = drive.download_file(f['id'])
-            wb = _parse_xlsx_from_source(file_buffer)
-            ws = wb.active
-            rows = []
-            count = 0
-            for i, row in enumerate(ws.iter_rows(values_only=True)):
-                if i == 0:
-                    continue  # skip header
-                rows.append(row)
-                count += 1
-            wb.close()
-
-            data[lo_name][day] = count
-            data[lo_name].setdefault("raw", {})[day] = rows
-
-    return data
-
-
-def read_smartcard_data(source="local", drive=None, folder_id=None):
-    """Read SmartCard data from local or Drive source."""
-    if source == "drive":
-        return read_smartcard_data_drive(drive, folder_id)
-    return read_smartcard_data_local()
-
-
-def read_renewal_data_local():
-    """Read Renewal 30 days Excel from local filesystem."""
+def read_renewal_data(mobile_to_lo):
+    """Read Renewal data and aggregate by Labour Officer and date."""
     wb = openpyxl.load_workbook(RENEWAL_FILE, read_only=True)
     ws = wb.active
     headers = None
-    rows = []
-    district_counts = {}
+
+    # lo_date_counts: {lo: {date_str: count}}
+    lo_date_counts = defaultdict(lambda: defaultdict(int))
+    unmatched = 0
+    total = 0
+    all_dates = set()
 
     for i, row in enumerate(ws.iter_rows(values_only=True)):
         if i == 0:
             headers = list(row)
             continue
-        rows.append(list(row))
-        code = row[3]  # application_code_suffix
-        if code and len(str(code)) > 6:
-            loc_code = str(code)[4:7]
-            dist_name = RENEWAL_LOC_MAP.get(loc_code, loc_code)
-            district_counts[dist_name] = district_counts.get(dist_name, 0) + 1
+        total += 1
+        mob = str(row[2]).strip() if row[2] else ""
+        created = row[8]
+        if hasattr(created, 'date'):
+            date_str = str(created.date())
+        elif isinstance(created, str):
+            date_str = created.split(' ')[0]
+        else:
+            date_str = "Unknown"
+        all_dates.add(date_str)
+
+        lo_raw = mobile_to_lo.get(mob, "")
+        if lo_raw:
+            lo = format_lo_name(lo_raw)
+            lo_date_counts[lo][date_str] += 1
+        else:
+            lo_date_counts["Unmatched"][date_str] += 1
+            unmatched += 1
 
     wb.close()
-    sorted_districts = sorted(district_counts.items(), key=lambda x: -x[1])
-    return headers, rows, sorted_districts
+    sorted_dates = sorted(all_dates)
+    return dict(lo_date_counts), sorted_dates, total, unmatched
 
 
-def read_renewal_data_drive(drive, folder_id):
-    """Read Renewal 30 days Excel from Google Drive."""
-    # Look for a file matching 'Renewal' in the root folder
-    files = drive.list_files(folder_id, extension=".xlsx")
-    renewal_file = None
-    for f in files:
-        if 'renewal' in f['name'].lower() or 'Renewal' in f['name']:
-            renewal_file = f
-            break
+# ─── Excel Sheet Builders ───
 
-    if not renewal_file:
-        print("   ⚠️  No Renewal file found in Drive root. Skipping.")
-        return [], [], []
-
-    print(f"   ⬇️  Downloading {renewal_file['name']}...")
-    file_buffer = drive.download_file(renewal_file['id'])
-    wb = _parse_xlsx_from_source(file_buffer)
-    ws = wb.active
-    headers = None
-    rows = []
-    district_counts = {}
-
-    for i, row in enumerate(ws.iter_rows(values_only=True)):
-        if i == 0:
-            headers = list(row)
-            continue
-        rows.append(list(row))
-        code = row[3]  # application_code_suffix
-        if code and len(str(code)) > 6:
-            loc_code = str(code)[4:7]
-            dist_name = RENEWAL_LOC_MAP.get(loc_code, loc_code)
-            district_counts[dist_name] = district_counts.get(dist_name, 0) + 1
-
-    wb.close()
-    sorted_districts = sorted(district_counts.items(), key=lambda x: -x[1])
-    return headers, rows, sorted_districts
-
-
-def read_renewal_data(source="local", drive=None, folder_id=None):
-    """Read Renewal data from local or Drive source."""
-    if source == "drive":
-        return read_renewal_data_drive(drive, folder_id)
-    return read_renewal_data_local()
-
-
-def create_summary_sheet(wb, sc_data, rn_districts, rn_total):
+def create_summary_sheet(wb, sc_lo_data, sc_file_data, sc_unmatched, sc_totals,
+                         rn_lo_data, rn_dates, rn_total, rn_unmatched):
     """Create the Summary Dashboard sheet."""
     ws = wb.active
     ws.title = "Summary Dashboard"
@@ -366,7 +272,7 @@ def create_summary_sheet(wb, sc_data, rn_districts, rn_total):
 
     # Title
     ws.merge_cells("A1:G1")
-    ws["A1"] = "📱 SMS Campaign — Consolidated Report"
+    ws["A1"] = "SMS Campaign — Consolidated Report"
     ws["A1"].font = Font(name="Calibri", bold=True, size=18, color=DARK_BLUE)
     ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 40
@@ -376,7 +282,7 @@ def create_summary_sheet(wb, sc_data, rn_districts, rn_total):
     ws["A2"].font = Font(name="Calibri", size=11, color="888888")
     ws["A2"].alignment = center
 
-    # --- Overall Summary ---
+    # Overall Summary
     row = 4
     ws.merge_cells(f"A{row}:G{row}")
     ws[f"A{row}"] = "OVERALL SUMMARY"
@@ -384,324 +290,294 @@ def create_summary_sheet(wb, sc_data, rn_districts, rn_total):
     ws.row_dimensions[row].height = 28
 
     row = 5
-    headers_list = ["Campaign", "Total SMS Sent", "Days", "Locations/Districts", "Date Range", "SMS Success Rate", "Status"]
+    headers_list = ["Campaign", "Total SMS", "Days", "Labour Officers", "Date Range", "Match Rate", "Status"]
     for c, h in enumerate(headers_list, 1):
         ws.cell(row=row, column=c, value=h)
     style_header_row(ws, row, len(headers_list))
 
-    sc_grand = sum(sum(v for k, v in lo.items() if k in DAY_FOLDERS) for lo in sc_data.values())
+    sc_grand = sum(sc_totals.values())
+    sc_matched = sc_grand - sum(sc_unmatched.values())
+    sc_match_pct = f"{sc_matched/sc_grand*100:.1f}%" if sc_grand else "0%"
+    sc_los = len(sc_lo_data)
+
+    rn_matched = rn_total - rn_unmatched
+    rn_match_pct = f"{rn_matched/rn_total*100:.1f}%" if rn_total else "0%"
+    rn_los = len([k for k in rn_lo_data if k != "Unmatched"])
 
     row = 6
-    sc_row = ["SmartCard", sc_grand, 3, f"{len(sc_data)} LOs", "28–30 Apr 2026", "100%", "✅ Completed"]
-    for c, v in enumerate(sc_row, 1):
+    for c, v in enumerate(["SmartCard", sc_grand, len(DAY_FOLDERS), f"{sc_los} LOs",
+                            "28 Apr – 3 May 2026", sc_match_pct, "Completed"], 1):
         cell = ws.cell(row=row, column=c, value=v)
-        cell.font = normal_font
-        cell.alignment = center
-        cell.border = thin_border
-        if c == 2:
-            cell.number_format = '#,##0'
+        cell.font = normal_font; cell.alignment = center; cell.border = thin_border
+        if c == 2: cell.number_format = '#,##0'
 
     row = 7
-    rn_row = ["Renewal 30 Days", rn_total, 1, f"{len(rn_districts)} Districts", "30 Apr 2026", "100%", "✅ Completed"]
-    for c, v in enumerate(rn_row, 1):
+    for c, v in enumerate(["Renewal 30 Days", rn_total, len(rn_dates), f"{rn_los} LOs",
+                            f"{rn_dates[0]} to {rn_dates[-1]}", rn_match_pct, "Completed"], 1):
         cell = ws.cell(row=row, column=c, value=v)
-        cell.font = normal_font
-        cell.alignment = center
-        cell.border = thin_border
-        if c == 2:
-            cell.number_format = '#,##0'
-        if row % 2 == 1:
-            cell.fill = alt_fill
+        cell.font = normal_font; cell.alignment = center; cell.border = thin_border
+        if c == 2: cell.number_format = '#,##0'
+        cell.fill = alt_fill
 
     row = 8
-    total_row = ["GRAND TOTAL", sc_grand + rn_total, "—", "—", "28–30 Apr 2026", "100%", "✅ All Done"]
-    for c, v in enumerate(total_row, 1):
+    for c, v in enumerate(["GRAND TOTAL", sc_grand + rn_total, "—", "—", "—", "—", "All Done"], 1):
         cell = ws.cell(row=row, column=c, value=v)
-        cell.font = total_font
-        cell.fill = total_fill
-        cell.alignment = center
-        cell.border = thin_border
-        if c == 2:
-            cell.number_format = '#,##0'
+        cell.font = total_font; cell.fill = total_fill; cell.alignment = center; cell.border = thin_border
+        if c == 2: cell.number_format = '#,##0'
 
-    # --- SmartCard Summary by LO ---
+    # SmartCard by LO
     row = 10
     ws.merge_cells(f"A{row}:F{row}")
-    ws[f"A{row}"] = "💳 SMARTCARD SMS — BY LABOUR OFFICE"
+    ws[f"A{row}"] = "SMARTCARD SMS — BY LABOUR OFFICER"
     ws[f"A{row}"].font = subtitle_font
     ws.row_dimensions[row].height = 28
 
     row = 11
-    sc_headers = ["#", "Labour Office", "28th April", "29th April", "30th April", "Total"]
+    sc_headers = ["#", "Labour Officer"] + DAY_FOLDERS + ["Total"]
     for c, h in enumerate(sc_headers, 1):
         ws.cell(row=row, column=c, value=h)
     style_header_row(ws, row, len(sc_headers))
 
     row = 12
-    grand_totals = {d: 0 for d in DAY_FOLDERS}
-    grand_total_all = 0
-    for idx, (lo_name, lo_data) in enumerate(sorted(sc_data.items()), 1):
+    day_totals = defaultdict(int)
+    grand = 0
+    sorted_los = sorted(sc_lo_data.items(), key=lambda x: -sum(x[1].values()))
+    for idx, (lo, day_counts) in enumerate(sorted_los, 1):
         ws.cell(row=row, column=1, value=idx).font = normal_font
-        ws.cell(row=row, column=2, value=lo_name).font = bold_font
+        ws.cell(row=row, column=2, value=lo).font = bold_font
         lo_total = 0
         for c, day in enumerate(DAY_FOLDERS, 3):
-            cnt = lo_data.get(day, 0)
+            cnt = day_counts.get(day, 0)
             cell = ws.cell(row=row, column=c, value=cnt)
-            cell.number_format = '#,##0'
-            cell.font = number_font
-            cell.alignment = right_align
-            grand_totals[day] += cnt
-            lo_total += cnt
-        cell = ws.cell(row=row, column=6, value=lo_total)
-        cell.number_format = '#,##0'
-        cell.font = total_font
-        cell.alignment = right_align
-        grand_total_all += lo_total
-
-        for c in range(1, 7):
+            cell.number_format = '#,##0'; cell.font = number_font; cell.alignment = right_align
+            day_totals[day] += cnt; lo_total += cnt
+        cell = ws.cell(row=row, column=len(sc_headers), value=lo_total)
+        cell.number_format = '#,##0'; cell.font = total_font; cell.alignment = right_align
+        grand += lo_total
+        for c in range(1, len(sc_headers)+1):
             ws.cell(row=row, column=c).border = thin_border
-            if c == 1:
-                ws.cell(row=row, column=c).alignment = center
-            if idx % 2 == 0:
-                ws.cell(row=row, column=c).fill = alt_fill
+            if idx % 2 == 0: ws.cell(row=row, column=c).fill = alt_fill
         row += 1
 
-    # Grand total row
-    ws.cell(row=row, column=1, value="").font = normal_font
+    # Unmatched row
+    um_total = sum(sc_unmatched.values())
+    if um_total > 0:
+        ws.cell(row=row, column=1, value="").font = normal_font
+        ws.cell(row=row, column=2, value="Unmatched").font = Font(name="Calibri", bold=True, color="E74C3C")
+        for c, day in enumerate(DAY_FOLDERS, 3):
+            cell = ws.cell(row=row, column=c, value=sc_unmatched.get(day, 0))
+            cell.number_format = '#,##0'; cell.font = number_font; cell.alignment = right_align
+        cell = ws.cell(row=row, column=len(sc_headers), value=um_total)
+        cell.number_format = '#,##0'; cell.font = total_font
+        for c in range(1, len(sc_headers)+1):
+            ws.cell(row=row, column=c).border = thin_border
+        row += 1
+
+    # Grand total
     ws.cell(row=row, column=2, value="GRAND TOTAL").font = total_font
     for c, day in enumerate(DAY_FOLDERS, 3):
-        cell = ws.cell(row=row, column=c, value=grand_totals[day])
-        cell.number_format = '#,##0'
-        cell.font = total_font
-        cell.alignment = right_align
-    cell = ws.cell(row=row, column=6, value=grand_total_all)
-    cell.number_format = '#,##0'
-    cell.font = total_font
-    cell.alignment = right_align
-    for c in range(1, 7):
-        ws.cell(row=row, column=c).fill = total_fill
-        ws.cell(row=row, column=c).border = thin_border
+        cell = ws.cell(row=row, column=c, value=day_totals[day] + sc_unmatched.get(day, 0))
+        cell.number_format = '#,##0'; cell.font = total_font; cell.alignment = right_align
+    cell = ws.cell(row=row, column=len(sc_headers), value=grand + um_total)
+    cell.number_format = '#,##0'; cell.font = total_font; cell.alignment = right_align
+    for c in range(1, len(sc_headers)+1):
+        ws.cell(row=row, column=c).fill = total_fill; ws.cell(row=row, column=c).border = thin_border
 
-    # --- Renewal Summary by District ---
+    # Renewal by LO
     row += 2
-    ws.merge_cells(f"A{row}:E{row}")
-    ws[f"A{row}"] = "🔄 RENEWAL 30 DAYS SMS — BY DISTRICT"
+    ws.merge_cells(f"A{row}:F{row}")
+    ws[f"A{row}"] = "RENEWAL 30 DAYS SMS — BY LABOUR OFFICER"
     ws[f"A{row}"].font = subtitle_font
     ws.row_dimensions[row].height = 28
 
     row += 1
-    rn_headers = ["#", "District", "SMS Count", "% Share", "Status"]
+    rn_headers = ["#", "Labour Officer"] + [d.replace("2026-", "") for d in rn_dates] + ["Total"]
     for c, h in enumerate(rn_headers, 1):
         ws.cell(row=row, column=c, value=h)
     style_header_row(ws, row, len(rn_headers))
 
     row += 1
-    rn_total_count = sum(c for _, c in rn_districts)
-    for idx, (dist, cnt) in enumerate(rn_districts, 1):
+    rn_sorted = sorted(
+        [(lo, dc) for lo, dc in rn_lo_data.items() if lo != "Unmatched"],
+        key=lambda x: -sum(x[1].values())
+    )
+    rn_day_totals = defaultdict(int)
+    rn_grand = 0
+    for idx, (lo, date_counts) in enumerate(rn_sorted, 1):
         ws.cell(row=row, column=1, value=idx).font = normal_font
-        ws.cell(row=row, column=2, value=dist).font = normal_font
-        cell = ws.cell(row=row, column=3, value=cnt)
-        cell.number_format = '#,##0'
-        cell.font = number_font
-        pct = round(cnt / rn_total_count * 100, 1) if rn_total_count else 0
-        ws.cell(row=row, column=4, value=f"{pct}%").font = normal_font
-        ws.cell(row=row, column=5, value="✅ Sent").font = normal_font
-        for c in range(1, 6):
+        ws.cell(row=row, column=2, value=lo).font = bold_font
+        lo_total = 0
+        for c, dt in enumerate(rn_dates, 3):
+            cnt = date_counts.get(dt, 0)
+            cell = ws.cell(row=row, column=c, value=cnt)
+            cell.number_format = '#,##0'; cell.font = number_font; cell.alignment = right_align
+            rn_day_totals[dt] += cnt; lo_total += cnt
+        cell = ws.cell(row=row, column=len(rn_headers), value=lo_total)
+        cell.number_format = '#,##0'; cell.font = total_font; cell.alignment = right_align
+        rn_grand += lo_total
+        for c in range(1, len(rn_headers)+1):
             ws.cell(row=row, column=c).border = thin_border
-            ws.cell(row=row, column=c).alignment = center if c in (1, 4, 5) else left_align if c == 2 else right_align
-            if idx % 2 == 0:
-                ws.cell(row=row, column=c).fill = alt_fill
+            if idx % 2 == 0: ws.cell(row=row, column=c).fill = alt_fill
         row += 1
 
-    # Total
+    # Grand total
     ws.cell(row=row, column=2, value="GRAND TOTAL").font = total_font
-    cell = ws.cell(row=row, column=3, value=rn_total_count)
-    cell.number_format = '#,##0'
-    cell.font = total_font
-    ws.cell(row=row, column=4, value="100%").font = total_font
-    ws.cell(row=row, column=5, value="✅").font = total_font
-    for c in range(1, 6):
-        ws.cell(row=row, column=c).fill = total_fill
-        ws.cell(row=row, column=c).border = thin_border
+    for c, dt in enumerate(rn_dates, 3):
+        cell = ws.cell(row=row, column=c, value=rn_day_totals[dt])
+        cell.number_format = '#,##0'; cell.font = total_font; cell.alignment = right_align
+    cell = ws.cell(row=row, column=len(rn_headers), value=rn_grand)
+    cell.number_format = '#,##0'; cell.font = total_font; cell.alignment = right_align
+    for c in range(1, len(rn_headers)+1):
+        ws.cell(row=row, column=c).fill = total_fill; ws.cell(row=row, column=c).border = thin_border
 
     auto_width(ws)
     ws.freeze_panes = "A6"
 
 
-def create_smartcard_lo_sheets(wb, sc_data):
-    """Create a detailed sheet per LO with day-wise raw data."""
-    for lo_name, lo_data in sorted(sc_data.items()):
-        # Sheet name max 31 chars
-        sheet_name = lo_name[:31].replace("–", "-")
-        ws = wb.create_sheet(title=sheet_name)
-        ws.sheet_properties.tabColor = "6366F1"
+def generate_dashboard_json(sc_lo_data, sc_file_data, sc_unmatched, sc_totals,
+                            rn_lo_data, rn_dates, rn_total, rn_unmatched):
+    """Generate JSON data file for the HTML dashboard."""
+    # Map full folder names to short keys for dashboard
+    folder_map = {
+        "28th April": "2026-04-28",
+        "29th April": "2026-04-29",
+        "30th April": "2026-04-30",
+        "3rd May": "2026-05-03",
+        "4th May": "2026-05-04",
+        "5th May": "2026-05-05",
+        "6th May": "2026-05-06"
+    }
 
-        # Title
-        ws.merge_cells("A1:D1")
-        ws["A1"] = f"💳 {lo_name} — SmartCard SMS Detail"
-        ws["A1"].font = Font(name="Calibri", bold=True, size=14, color=DARK_BLUE)
-        ws.row_dimensions[1].height = 32
-
-        row = 3
+    # SmartCard by LO
+    sc_rows = []
+    for lo, day_counts in sorted(sc_lo_data.items(), key=lambda x: -sum(x[1].values())):
+        row = {"lo": lo}
+        total = 0
         for day in DAY_FOLDERS:
-            raw_rows = lo_data.get("raw", {}).get(day, [])
-            count = lo_data.get(day, 0)
+            cnt = day_counts.get(day, 0)
+            key = folder_map.get(day, day)
+            row[key] = cnt
+            total += cnt
+        row["total"] = total
+        sc_rows.append(row)
 
-            # Day header
-            ws.merge_cells(f"A{row}:D{row}")
-            ws[f"A{row}"] = f"📅 {day} — {count:,} SMS"
-            ws[f"A{row}"].font = Font(name="Calibri", bold=True, size=12, color=WHITE)
-            ws[f"A{row}"].fill = PatternFill(start_color=MED_BLUE, end_color=MED_BLUE, fill_type="solid")
-            ws[f"A{row}"].alignment = left_align
-            ws.row_dimensions[row].height = 26
-            row += 1
+    # Add unmatched
+    um_total = sum(sc_unmatched.values())
+    if um_total > 0:
+        um_row = {"lo": "Unmatched"}
+        for day in DAY_FOLDERS:
+            key = folder_map.get(day, day)
+            um_row[key] = sc_unmatched.get(day, 0)
+        um_row["total"] = um_total
+        sc_rows.append(um_row)
 
-            # Column headers
-            col_headers = ["#", "Mobile No", "Location", "SMS Content / Address"]
-            for c, h in enumerate(col_headers, 1):
-                ws.cell(row=row, column=c, value=h)
-            style_header_row(ws, row, len(col_headers), sub_header_font, sub_header_fill)
-            row += 1
+    sc_grand = sum(sc_totals.values())
 
-            # Data rows
-            for idx, r in enumerate(raw_rows, 1):
-                ws.cell(row=row, column=1, value=idx).font = normal_font
-                ws.cell(row=row, column=1).alignment = center
-                mobile = r[0] if r[0] else ""
-                ws.cell(row=row, column=2, value=str(mobile)).font = normal_font
-                ws.cell(row=row, column=3, value=r[1] if len(r) > 1 else "").font = normal_font
-                ws.cell(row=row, column=4, value=r[2] if len(r) > 2 else "").font = normal_font
-                for c in range(1, 5):
-                    ws.cell(row=row, column=c).border = thin_border
-                    if idx % 2 == 0:
-                        ws.cell(row=row, column=c).fill = alt_fill
-                row += 1
+    # SmartCard by file (original grouping)
+    sc_file_rows = []
+    for label, day_counts in sorted(sc_file_data.items(), key=lambda x: -sum(x[1].values())):
+        row = {"loc": label}
+        total = 0
+        for day in DAY_FOLDERS:
+            cnt = day_counts.get(day, 0)
+            key = folder_map.get(day, day)
+            row[key] = cnt
+            total += cnt
+        row["total"] = total
+        sc_file_rows.append(row)
 
-            row += 1  # gap between days
+    # Renewal by LO
+    rn_rows = []
+    for lo, date_counts in sorted(
+        rn_lo_data.items(),
+        key=lambda x: -sum(x[1].values())
+    ):
+        row = {"lo": lo}
+        total = 0
+        for dt in rn_dates:
+            cnt = date_counts.get(dt, 0)
+            row[dt] = cnt
+            total += cnt
+        row["total"] = total
+        rn_rows.append(row)
 
-        auto_width(ws, min_width=14)
-        ws.freeze_panes = "A4"
+    data = {
+        "generated": datetime.now().strftime("%d %B %Y"),
+        "smartcard": {
+            "days": DAY_FOLDERS,
+            "by_lo": sc_rows,
+            "by_file": sc_file_rows,
+            "grand_total": sc_grand,
+            "lo_count": len(sc_lo_data),
+        },
+        "renewal": {
+            "dates": rn_dates,
+            "by_lo": rn_rows,
+            "grand_total": rn_total,
+            "lo_count": len([k for k in rn_lo_data if k != "Unmatched"]),
+            "days_count": len(rn_dates),
+        }
+    }
 
+    with open(JSON_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
-def create_renewal_raw_sheet(wb, headers, rows):
-    """Create Renewal 30 Days raw data sheet."""
-    ws = wb.create_sheet(title="Renewal 30D Raw Data")
-    ws.sheet_properties.tabColor = "22D3EE"
-
-    ws.merge_cells("A1:K1")
-    ws["A1"] = "🔄 Renewal 30 Days — Raw SMS Data (30th April 2026)"
-    ws["A1"].font = Font(name="Calibri", bold=True, size=14, color=DARK_BLUE)
-    ws.row_dimensions[1].height = 32
-
-    # Headers
-    row = 3
-    for c, h in enumerate(headers, 1):
-        ws.cell(row=row, column=c, value=h)
-    style_header_row(ws, row, len(headers))
-
-    # Data (limit to first 50000 to avoid huge files)
-    max_rows = min(len(rows), 50000)
-    for idx, r in enumerate(rows[:max_rows]):
-        data_row = row + 1 + idx
-        for c, v in enumerate(r, 1):
-            cell = ws.cell(row=data_row, column=c, value=v)
-            cell.font = normal_font
-            cell.border = thin_border
-            if idx % 2 == 1:
-                cell.fill = alt_fill
-
-    # Add count note
-    note_row = row + max_rows + 2
-    ws.cell(row=note_row, column=1, value=f"Total records: {len(rows):,}").font = bold_font
-
-    auto_width(ws, min_width=12, max_width=30)
-    ws.freeze_panes = "A4"
-
-
-def parse_args():
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
-        description="SMS Campaign — Consolidated Excel Report Generator",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python generate_report.py                                    # local mode
-  python generate_report.py --source drive                     # drive mode (uses config.json)
-  python generate_report.py --source drive --folder-id ABC123  # drive mode with folder ID
-        """
-    )
-    parser.add_argument(
-        '--source', choices=['local', 'drive'], default=None,
-        help='Data source: "local" (filesystem) or "drive" (Google Drive). '
-             'Defaults to config.json value, or "local" if not set.'
-    )
-    parser.add_argument(
-        '--folder-id', default=None,
-        help='Google Drive folder ID containing SmartCard/ and Renewal files.'
-    )
-    parser.add_argument(
-        '--key', default=None,
-        help='Path to Google Service Account JSON key file.'
-    )
-    return parser.parse_args()
+    return data
 
 
 def main():
-    args = parse_args()
-    config = load_config()
+    print("=" * 60)
+    print("  SMS Campaign — Consolidated Report Generator")
+    print("  Cross-referencing with ACTIVE Registered Labourers")
+    print("=" * 60)
 
-    # Resolve source — CLI overrides config, default is "local"
-    source = args.source or config.get('source', 'local')
-    folder_id = args.folder_id or config.get('drive_folder_id')
-    key_path = args.key or config.get('service_account_key', 'service_account.json')
+    # 1. Load Master Data
+    print("1. Loading Master Data...")
+    sc_master_mapping = load_sc_master_data()
+    print(f"   SmartCard master: {len(sc_master_mapping)} entries")
+    rn_mobile_to_lo = load_active_data()
+    print(f"   Renewal master: {len(rn_mobile_to_lo)} entries")
 
-    print("📊 Generating SMS Consolidated Report...")
-    print("=" * 50)
-    print(f"   Source: {source.upper()}")
+    # 2. Reading SmartCard SMS data
+    print("\n2. Reading SmartCard SMS data...")
+    sc_lo_data, sc_file_data, sc_unmatched, sc_totals = read_smartcard_data(sc_master_mapping)
+    sc_grand = sum(sc_totals.values())
+    sc_matched = sc_grand - sum(sc_unmatched.values())
+    print(f"   Total SMS: {sc_grand:,}")
+    print(f"   Matched to LO: {sc_matched:,} ({sc_matched/sc_grand*100:.1f}%)")
+    print(f"   Unmatched: {sum(sc_unmatched.values()):,}")
+    print(f"   Unique LOs found: {len(sc_lo_data)}")
 
-    drive = None
-    if source == 'drive':
-        if not folder_id or folder_id == 'YOUR_FOLDER_ID_HERE':
-            print("❌ Error: Drive folder ID not set.")
-            print("   Set it in config.json or pass --folder-id <ID>")
-            return
-        if not os.path.exists(key_path):
-            print(f"❌ Error: Service account key not found at: {key_path}")
-            print("   Download it from Google Cloud Console and place it in this directory.")
-            print("   Or pass --key <path_to_key.json>")
-            return
-        print(f"   🔑 Using service account: {key_path}")
-        print(f"   📁 Drive folder ID: {folder_id}")
-        drive = GoogleDriveReader(key_path)
+    # 3. Reading Renewal data
+    print("\n3. Reading Renewal 30 Days data...")
+    rn_lo_data, rn_dates, rn_total, rn_unmatched = read_renewal_data(rn_mobile_to_lo)
+    rn_matched = rn_total - rn_unmatched
+    print(f"   Total SMS: {rn_total:,}")
+    print(f"   Matched to LO: {rn_matched:,} ({rn_matched/rn_total*100:.1f}%)")
+    print(f"   Unmatched: {rn_unmatched:,}")
+    print(f"   Unique LOs: {len([k for k in rn_lo_data if k != 'Unmatched'])}")
+    print(f"   Date range: {rn_dates[0]} to {rn_dates[-1]} ({len(rn_dates)} days)")
 
-    # Read data
-    print("\n📂 Reading SmartCard data...")
-    sc_data = read_smartcard_data(source=source, drive=drive, folder_id=folder_id)
-    print(f"   Found {len(sc_data)} Labour Offices")
-
-    print("📂 Reading Renewal 30 Days data...")
-    rn_headers, rn_rows, rn_districts = read_renewal_data(source=source, drive=drive, folder_id=folder_id)
-    rn_total = len(rn_rows)
-    print(f"   Found {rn_total:,} records across {len(rn_districts)} districts")
-
-    # Create workbook
-    wb = openpyxl.Workbook()
-
-    print("\n📝 Creating Summary Dashboard...")
-    create_summary_sheet(wb, sc_data, rn_districts, rn_total)
-
-    print("📝 Creating SmartCard LO detail sheets...")
-    create_smartcard_lo_sheets(wb, sc_data)
-
-    print("📝 Creating Renewal raw data sheet...")
-    create_renewal_raw_sheet(wb, rn_headers, rn_rows)
-
-    # Save
-    print(f"\n💾 Saving to: {OUTPUT_FILE}")
-    wb.save(OUTPUT_FILE)
-    print(f"✅ Report generated successfully!")
-    print(f"   File: {OUTPUT_FILE}")
+    # Create Excel
+    print("\n4. Creating Excel report...")
+    wbk = openpyxl.Workbook()
+    create_summary_sheet(wbk, sc_lo_data, sc_file_data, sc_unmatched, sc_totals,
+                         rn_lo_data, rn_dates, rn_total, rn_unmatched)
+    print(f"   Saving to: {OUTPUT_FILE}")
+    wbk.save(OUTPUT_FILE)
     print(f"   Size: {os.path.getsize(OUTPUT_FILE) / (1024*1024):.1f} MB")
+
+    # Generate JSON for dashboard
+    print("\n5. Generating dashboard JSON...")
+    data = generate_dashboard_json(sc_lo_data, sc_file_data, sc_unmatched, sc_totals,
+                                   rn_lo_data, rn_dates, rn_total, rn_unmatched)
+    print(f"   Saved to: {JSON_FILE}")
+    print(f"   SmartCard LOs: {data['smartcard']['lo_count']}")
+    print(f"   Renewal LOs: {data['renewal']['lo_count']}")
+
+    print("\n" + "=" * 60)
+    print("  Report generated successfully!")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

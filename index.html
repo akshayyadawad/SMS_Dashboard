@@ -3,7 +3,10 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0e1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>SMS Dashboard — Consolidated Report</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
@@ -26,7 +29,77 @@
       --warning: #f59e0b;
       --text: #f1f5f9;
       --text-muted: #94a3b8;
-      --text-dim: #64748b
+      --text-dim: #64748b;
+      --shadow: rgba(0, 0, 0, 0.3);
+
+      --header-bg: linear-gradient(135deg, #1a223580, #11182780);
+      --header-title-gradient: linear-gradient(135deg, #ffffff, #a5b4fc);
+      --campaign-tile-sc-bg: linear-gradient(135deg, #1e1b4b80, #312e8160);
+      --campaign-tile-sc-border: #4f46e540;
+      --campaign-tile-sc-hover: linear-gradient(135deg, #4f46e520, #6366f110);
+      --campaign-tile-rn-bg: linear-gradient(135deg, #0c404980, #164e6360);
+      --campaign-tile-rn-border: #0891b240;
+      --campaign-tile-rn-hover: linear-gradient(135deg, #0891b220, #22d3ee10);
+      --table-header: #0f172a;
+      --table-row-hover: #ffffff05;
+      --tabs-bg: #0f172a;
+      --tab-hover: #ffffff08;
+      --toggle-bg: #1e293b50;
+      --toggle-border: #334155;
+      --toggle-color: #f1f5f9;
+      --summary-row-bg: #6366f108;
+      --summary-row-border: #6366f140;
+      --summary-row-color: #a5b4fc;
+      --card-gradient: linear-gradient(135deg, var(--card), #1a223590);
+      --orb-opacity: 0.15;
+
+      --sc-stats-color: #a5b4fc;
+      --rn-stats-color: #22d3ee;
+      --export-btn-bg: #6366f120;
+      --export-btn-border: #6366f150;
+      --export-btn-color: #a5b4fc;
+    }
+
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --primary: #4f46e5;
+      --accent: #0891b2;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #64748b;
+      --shadow: rgba(0, 0, 0, 0.05);
+
+      --header-bg: linear-gradient(135deg, #ffffffb3, #f1f5f9b3);
+      --header-title-gradient: linear-gradient(135deg, #1e1b4b, #4f46e5);
+      --campaign-tile-sc-bg: linear-gradient(135deg, #f5f3ffbf, #e0e7ffbf);
+      --campaign-tile-sc-border: #c7d2fe;
+      --campaign-tile-sc-hover: linear-gradient(135deg, #e0e7ff40, #c7d2fe20);
+      --campaign-tile-rn-bg: linear-gradient(135deg, #ecfdf5bf, #ecfeffbf);
+      --campaign-tile-rn-border: #a5f3fc;
+      --campaign-tile-rn-hover: linear-gradient(135deg, #a5f3fc40, #22d3ee20);
+      --table-header: #f1f5f9;
+      --table-row-hover: #f8fafc;
+      --tabs-bg: #f1f5f9;
+      --tab-hover: #e2e8f0;
+      --toggle-bg: #ffffff;
+      --toggle-border: #cbd5e1;
+      --toggle-color: #1e293b;
+      --summary-row-bg: #4f46e508;
+      --summary-row-border: #4f46e530;
+      --summary-row-color: #4f46e5;
+      --card-gradient: linear-gradient(135deg, var(--card), #f8fafcb3);
+      --orb-opacity: 0.06;
+
+      --sc-stats-color: #4f46e5;
+      --rn-stats-color: #0891b2;
+      --export-btn-bg: #4f46e515;
+      --export-btn-border: #4f46e540;
+      --export-btn-color: #4f46e5;
     }
 
     body {
@@ -34,7 +107,8 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      overflow-x: hidden
+      overflow-x: hidden;
+      transition: background 0.3s, color 0.3s;
     }
 
     .grain {
@@ -51,7 +125,8 @@
       border-radius: 50%;
       filter: blur(120px);
       pointer-events: none;
-      opacity: .15
+      opacity: var(--orb-opacity);
+      transition: opacity 0.3s;
     }
 
     .glow-orb.purple {
@@ -84,18 +159,29 @@
       justify-content: space-between;
       margin-bottom: 36px;
       padding: 24px 32px;
-      background: linear-gradient(135deg, #1a223580, #11182780);
+      background: var(--header-bg);
       border: 1px solid var(--border);
       border-radius: 20px;
-      backdrop-filter: blur(20px)
+      backdrop-filter: blur(20px);
+      transition: background 0.3s, border-color 0.3s;
     }
 
     .header-left h1 {
       font-size: 28px;
       font-weight: 800;
-      background: linear-gradient(135deg, #fff, #a5b4fc);
+      letter-spacing: -0.02em;
+      background: var(--header-title-gradient);
+      background-clip: text;
       -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent
+      -webkit-text-fill-color: transparent;
+      transition: background 0.3s;
+    }
+
+    .header-right {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
     }
 
     .header-left p {
@@ -174,12 +260,12 @@
     }
 
     .campaign-tile.sc {
-      background: linear-gradient(135deg, #1e1b4b80, #312e8160);
-      border-color: #4f46e540
+      background: var(--campaign-tile-sc-bg);
+      border-color: var(--campaign-tile-sc-border);
     }
 
     .campaign-tile.sc::before {
-      background: linear-gradient(135deg, #4f46e520, #6366f110)
+      background: var(--campaign-tile-sc-hover);
     }
 
     .campaign-tile.sc.active {
@@ -192,12 +278,12 @@
     }
 
     .campaign-tile.rn {
-      background: linear-gradient(135deg, #0c404980, #164e6360);
-      border-color: #0891b240
+      background: var(--campaign-tile-rn-bg);
+      border-color: var(--campaign-tile-rn-border);
     }
 
     .campaign-tile.rn::before {
-      background: linear-gradient(135deg, #0891b220, #22d3ee10)
+      background: var(--campaign-tile-rn-hover);
     }
 
     .campaign-tile.rn.active {
@@ -290,18 +376,18 @@
     }
 
     .stat-card {
-      background: linear-gradient(135deg, var(--card), #1a223590);
+      background: var(--card-gradient);
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 24px;
       position: relative;
       overflow: hidden;
-      transition: transform .3s, border-color .3s
+      transition: transform .3s, border-color .3s, background 0.3s;
     }
 
     .stat-card:hover {
       transform: translateY(-4px);
-      border-color: #6366f150
+      border-color: var(--primary);
     }
 
     .stat-card .icon {
@@ -399,10 +485,11 @@
     }
 
     .chart-card {
-      background: linear-gradient(135deg, var(--card), #1a223590);
+      background: var(--card-gradient);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 24px
+      padding: 24px;
+      transition: background 0.3s, border-color 0.3s;
     }
 
     .chart-card h3 {
@@ -418,10 +505,11 @@
     }
 
     .table-card {
-      background: linear-gradient(135deg, var(--card), #1a223590);
+      background: var(--card-gradient);
       border: 1px solid var(--border);
       border-radius: 16px;
-      overflow: hidden
+      overflow: hidden;
+      transition: background 0.3s, border-color 0.3s;
     }
 
     .table-card .table-header {
@@ -443,7 +531,7 @@
     }
 
     thead {
-      background: #0f172a
+      background: var(--table-header)
     }
 
     th {
@@ -468,7 +556,7 @@
     }
 
     tr:hover {
-      background: #ffffff05
+      background: var(--table-row-hover)
     }
 
     .loc-badge {
@@ -496,11 +584,13 @@
     .tabs {
       display: flex;
       gap: 4px;
-      background: #0f172a;
+      flex-wrap: wrap;
+      background: var(--tabs-bg);
       border-radius: 12px;
       padding: 4px;
       width: fit-content;
-      margin-bottom: 20px
+      margin-bottom: 20px;
+      transition: background 0.3s;
     }
 
     .tab {
@@ -522,7 +612,7 @@
 
     .tab:hover:not(.active) {
       color: var(--text);
-      background: #ffffff08
+      background: var(--tab-hover)
     }
 
     .footer {
@@ -548,13 +638,69 @@
       }
     }
 
+    @media(max-width:768px) {
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+        padding: 20px;
+      }
+
+      .header-left h1 {
+        font-size: 20px;
+      }
+
+      .tile-stat .ts-val {
+        font-size: 20px;
+      }
+
+      .stat-card .value {
+        font-size: 24px;
+      }
+    }
+
     @media(max-width:640px) {
       .stats-grid {
         grid-template-columns: 1fr
       }
 
       .container {
-        padding: 16px
+        padding: 12px
+      }
+
+      .tabs {
+        flex-wrap: wrap;
+        width: 100%;
+      }
+
+      .tab {
+        flex: 1 1 auto;
+        padding: 8px 12px;
+        font-size: 11px;
+        text-align: center;
+      }
+
+      .table-card {
+        margin: 0 -12px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      th,
+      td {
+        padding: 10px 12px;
+        font-size: 12px;
+      }
+
+      .campaign-tile {
+        padding: 20px;
       }
     }
 
@@ -590,13 +736,13 @@
     }
 
     .summary-row {
-      background: #6366f108 !important;
+      background: var(--summary-row-bg) !important;
       font-weight: 700
     }
 
     .summary-row td {
-      border-top: 2px solid #6366f140;
-      color: #a5b4fc
+      border-top: 2px solid var(--summary-row-border);
+      color: var(--summary-row-color)
     }
   </style>
 </head>
@@ -610,19 +756,21 @@
     <!-- Header -->
     <div class="header">
       <div class="header-left">
-        <h1>📱 SMS Report</h1>
-        <p>SmartCard & Renewal 30 Days</p>
+        <h1>SMS Report - SmartCard & Renewal 30 Days</h1>
       </div>
-      <div style="display:flex;gap:12px;align-items:center">
+      <div class="header-right">
+        <button id="themeToggle" class="badge"
+          style="background:var(--toggle-bg);border-color:var(--toggle-border);color:var(--toggle-color);cursor:pointer;transition:all .3s;outline:none;"
+          onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+          <span id="themeToggleIcon">☀️</span>
+        </button>
         <a href="SMS_Consolidated_Report.xlsx" download class="badge"
-          style="background:#6366f120;border-color:#6366f150;color:#a5b4fc;text-decoration:none;cursor:pointer;transition:all .3s"
-          onmouseover="this.style.background='#6366f140'" onmouseout="this.style.background='#6366f120'">📥 Download
-          Excel Report</a>
-        <div class="badge live">Report Generated: 30th April 2026</div>
+          style="background:var(--export-btn-bg);border-color:var(--export-btn-border);color:var(--export-btn-color);text-decoration:none;cursor:pointer;transition:all .3s"
+          onmouseover="this.style.background='var(--primary)'"
+          onmouseout="this.style.background='var(--export-btn-bg)'">Export .xlsx</a>
+        <div class="badge live">Data Updated: 6th May 2026 (Evening)</div>
       </div>
-    </div>
-
-    <!-- Campaign Tiles -->
+    </div> <!-- Campaign Tiles -->
     <div class="campaign-tiles">
       <div class="campaign-tile sc active" onclick="showPanel('sc')">
         <div class="active-indicator"></div>
@@ -631,16 +779,20 @@
         <div class="tile-sub">SMS sent for SmartCard collection across Labour Offices</div>
         <div class="tile-stats">
           <div class="tile-stat">
-            <div class="ts-val" style="color:#a5b4fc">1,44,163</div>
+            <div class="ts-val" style="color:var(--sc-stats-color)">98,223</div>
+            <div class="ts-label">Latest (6 May)</div>
+          </div>
+          <div class="tile-stat">
+            <div class="ts-val" style="color:var(--sc-stats-color)">3,57,467</div>
             <div class="ts-label">Total SMS Sent</div>
           </div>
           <div class="tile-stat">
-            <div class="ts-val" style="color:#a5b4fc">3</div>
+            <div class="ts-val" style="color:var(--sc-stats-color)">7</div>
             <div class="ts-label">Days</div>
           </div>
           <div class="tile-stat">
-            <div class="ts-val" style="color:#a5b4fc">10</div>
-            <div class="ts-label">Locations</div>
+            <div class="ts-val" style="color:var(--sc-stats-color)">21</div>
+            <div class="ts-label">Labour Officers</div>
           </div>
         </div>
       </div>
@@ -651,16 +803,20 @@
         <div class="tile-sub">SMS sent for renewal reminders — validity expiring in 30 days</div>
         <div class="tile-stats">
           <div class="tile-stat">
-            <div class="ts-val" style="color:#67e8f9">38,123</div>
+            <div class="ts-val" style="color:var(--rn-stats-color)">3,086</div>
+            <div class="ts-label">Latest (6 May)</div>
+          </div>
+          <div class="tile-stat">
+            <div class="ts-val" style="color:var(--rn-stats-color)">58,034</div>
             <div class="ts-label">Total SMS Sent</div>
           </div>
           <div class="tile-stat">
-            <div class="ts-val" style="color:#67e8f9">1</div>
-            <div class="ts-label">Day</div>
+            <div class="ts-val" style="color:var(--rn-stats-color)">19</div>
+            <div class="ts-label">Days</div>
           </div>
           <div class="tile-stat">
-            <div class="ts-val" style="color:#67e8f9">32</div>
-            <div class="ts-label">Districts</div>
+            <div class="ts-val" style="color:var(--rn-stats-color)">43</div>
+            <div class="ts-label">Labour Officers</div>
           </div>
         </div>
       </div>
@@ -668,34 +824,29 @@
 
     <!-- SmartCard Panel -->
     <div class="panel visible" id="panelSC">
-      <div class="charts-grid">
-        <div class="chart-card">
-          <h3>SmartCard — Day-wise Trend</h3><canvas id="dayChart"></canvas>
-        </div>
-        <div class="chart-card">
-          <h3>Location-wise Distribution</h3><canvas id="scPieChart"></canvas>
-        </div>
-      </div>
       <div class="section">
         <div class="section-header">
-          <h2>💳 LO-wise Breakdown</h2><span class="tag sc">SmartCard</span>
+          <h2>LO-wise Breakdown</h2><span class="tag sc">SmartCard</span>
         </div>
         <div class="tabs" id="scTabs">
           <button class="tab active" data-day="all">All Days</button>
-          <button class="tab" data-day="28">28th April</button>
-          <button class="tab" data-day="29">29th April</button>
-          <button class="tab" data-day="30">30th April</button>
+          <button class="tab" data-day="2026-04-28">28 Apr</button>
+          <button class="tab" data-day="2026-04-29">29 Apr</button>
+          <button class="tab" data-day="2026-04-30">30 Apr</button>
+          <button class="tab" data-day="2026-05-03">3 May</button>
+          <button class="tab" data-day="2026-05-04">4 May</button>
+          <button class="tab" data-day="2026-05-05">5 May</button>
+          <button class="tab" data-day="2026-05-06">6 May</button>
         </div>
         <div class="table-card">
           <table>
             <thead>
               <tr>
                 <th>#</th>
-                <th>Location</th>
-                <th>28th April</th>
-                <th>29th April</th>
-                <th>30th April</th>
-                <th>Total</th>
+                <th>Labour Officer</th>
+                <th>SMS Count</th>
+                <th>% Share</th>
+                <th>Bar</th>
               </tr>
             </thead>
             <tbody id="scBody"></tbody>
@@ -706,44 +857,39 @@
 
     <!-- Renewal Panel -->
     <div class="panel" id="panelRN">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="icon cyan">✅</div>
-          <div class="label">SMS Delivered</div>
-          <div class="value">38,123</div>
-          <div class="sub">100% delivery rate</div>
-        </div>
-        <div class="stat-card">
-          <div class="icon green">📍</div>
-          <div class="label">Districts Covered</div>
-          <div class="value">32</div>
-          <div class="sub">Across Karnataka</div>
-        </div>
-        <div class="stat-card">
-          <div class="icon amber">📋</div>
-          <div class="label">Catalog Status</div>
-          <div class="value">47</div>
-          <div class="sub">All records — Status 47</div>
-        </div>
-      </div>
-      <div class="charts-grid">
-        <div class="chart-card" style="grid-column:1/-1">
-          <h3>Top 15 Districts by SMS Count</h3><canvas id="renewalChart" style="max-height:300px"></canvas>
-        </div>
-      </div>
+
       <div class="section">
         <div class="section-header">
-          <h2>🔄 Renewal 30 Days — District Breakdown</h2><span class="tag rn">Renewal</span>
+          <h2>LO-wise Breakdown</h2><span class="tag rn">Renewal</span>
+        </div>
+        <div class="tabs" id="rnTabs">
+          <button class="tab active" data-day="all">All Days</button>
+          <button class="tab" data-day="2026-04-18">18 Apr</button>
+          <button class="tab" data-day="2026-04-19">19 Apr</button>
+          <button class="tab" data-day="2026-04-20">20 Apr</button>
+          <button class="tab" data-day="2026-04-21">21 Apr</button>
+          <button class="tab" data-day="2026-04-22">22 Apr</button>
+          <button class="tab" data-day="2026-04-23">23 Apr</button>
+          <button class="tab" data-day="2026-04-24">24 Apr</button>
+          <button class="tab" data-day="2026-04-25">25 Apr</button>
+          <button class="tab" data-day="2026-04-26">26 Apr</button>
+          <button class="tab" data-day="2026-04-27">27 Apr</button>
+          <button class="tab" data-day="2026-04-28">28 Apr</button>
+          <button class="tab" data-day="2026-04-29">29 Apr</button>
+          <button class="tab" data-day="2026-04-30">30 Apr</button>
+          <button class="tab" data-day="2026-05-01">1 May</button>
+          <button class="tab" data-day="2026-05-02">2 May</button>
+          <button class="tab" data-day="2026-05-03">3 May</button>
+          <button class="tab" data-day="2026-05-04">4 May</button>
+          <button class="tab" data-day="2026-05-05">5 May</button>
+          <button class="tab" data-day="2026-05-06">6 May</button>
         </div>
         <div class="table-card">
-          <div class="table-header">
-            <h3>All Districts</h3><span style="color:var(--text-dim);font-size:13px">32 districts • 38,123 SMS</span>
-          </div>
           <table>
             <thead>
               <tr>
                 <th>#</th>
-                <th>District</th>
+                <th>Labour Officer</th>
                 <th>SMS Count</th>
                 <th>% Share</th>
                 <th>Bar</th>
@@ -755,7 +901,10 @@
       </div>
     </div>
 
-    <div class="footer">SMS Dashboard Consolidated Report • Generated on 30th April 2026 • Karnataka Building & Other
+
+
+    <div class="footer">SMS Dashboard Consolidated Report • Data Updated: 6th May 2026 • Karnataka Building &amp;
+      Other
       Construction Workers Welfare Board</div>
   </div>
 
@@ -770,72 +919,1360 @@
       } else {
         document.querySelector('.campaign-tile.rn').classList.add('active');
         document.getElementById('panelRN').classList.add('visible');
-        if (!window.rnChartsInit) initRenewalCharts();
       }
     }
 
-    // SmartCard Data
-    const scData = [
-      { loc: 'Makali (LO1)', d28: 5287, d29: 4610, d30: 4368 }, { loc: 'Kengeri (LO2)', d28: 4966, d29: 5019, d30: 4769 },
-      { loc: 'Marathalli (LO3)', d28: 3245, d29: 3308, d30: 3161 }, { loc: 'HBR Layout (LO4)', d28: 658, d29: 615, d30: 591 },
-      { loc: 'RT Nagar (LO5)', d28: 3757, d29: 3722, d30: 3556 }, { loc: 'Chandapura (LO6)', d28: 1668, d29: 1633, d30: 1578 },
-      { loc: 'Shanti Nagar (LO7)', d28: 299, d29: 239, d30: 223 }, { loc: 'Jakkur (LO8)', d28: 3570, d29: 3602, d30: 3486 },
-      { loc: 'Devanahalli (Bng Rural)', d28: 1080, d29: 817, d30: 749 }, { loc: 'Mysore', d28: 25161, d29: 23746, d30: 24680 }
-    ];
-    scData.forEach(r => r.total = r.d28 + r.d29 + r.d30);
-    const scT28 = scData.reduce((s, r) => s + r.d28, 0), scT29 = scData.reduce((s, r) => s + r.d29, 0), scT30 = scData.reduce((s, r) => s + r.d30, 0), scGrand = scT28 + scT29 + scT30;
-    const colors = ['#818cf8', '#6366f1', '#a78bfa', '#7c3aed', '#c084fc', '#8b5cf6', '#a5b4fc', '#4f46e5', '#c4b5fd', '#6d28d9'];
+    // SmartCard Data — by Labour Officer (matched via New_Smartcard_Data.xlsx, ~100% match)
+                const scData = [
+  {
+    "lo": "LO@Mysore (LO Mysore)",
+    "2026-04-28": 25157,
+    "2026-04-29": 23742,
+    "2026-04-30": 24680,
+    "2026-05-03": 24639,
+    "2026-05-04": 24639,
+    "2026-05-05": 0,
+    "2026-05-06": 24256,
+    "total": 147113
+  },
+  {
+    "lo": "LO2@Bng (LO2 Kengeri)",
+    "2026-04-28": 4966,
+    "2026-04-29": 5019,
+    "2026-04-30": 4769,
+    "2026-05-03": 4675,
+    "2026-05-04": 4675,
+    "2026-05-05": 4603,
+    "2026-05-06": 4556,
+    "total": 33263
+  },
+  {
+    "lo": "LO1@Bng (LO1 Makali)",
+    "2026-04-28": 5281,
+    "2026-04-29": 4604,
+    "2026-04-30": 4368,
+    "2026-05-03": 4276,
+    "2026-05-04": 4276,
+    "2026-05-05": 4200,
+    "2026-05-06": 4151,
+    "total": 31156
+  },
+  {
+    "lo": "LO5@Bng (LO5 RT Nagar)",
+    "2026-04-28": 3757,
+    "2026-04-29": 3722,
+    "2026-04-30": 3556,
+    "2026-05-03": 3479,
+    "2026-05-04": 3479,
+    "2026-05-05": 3432,
+    "2026-05-06": 3391,
+    "total": 24816
+  },
+  {
+    "lo": "LO8@Bng (LO8 Jakkur)",
+    "2026-04-28": 3570,
+    "2026-04-29": 3602,
+    "2026-04-30": 3486,
+    "2026-05-03": 3438,
+    "2026-05-04": 3438,
+    "2026-05-05": 3415,
+    "2026-05-06": 3394,
+    "total": 24343
+  },
+  {
+    "lo": "LO3@Bng (LO3 Marathalli)",
+    "2026-04-28": 3245,
+    "2026-04-29": 3308,
+    "2026-04-30": 3161,
+    "2026-05-03": 3120,
+    "2026-05-04": 3120,
+    "2026-05-05": 3107,
+    "2026-05-06": 3085,
+    "total": 22146
+  },
+  {
+    "lo": "LO@Kolar (LO Kolar)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 16017,
+    "total": 16017
+  },
+  {
+    "lo": "LO6@Bng (LO6 Chandapura)",
+    "2026-04-28": 1668,
+    "2026-04-29": 1633,
+    "2026-04-30": 1578,
+    "2026-05-03": 1539,
+    "2026-05-04": 1539,
+    "2026-05-05": 1513,
+    "2026-05-06": 1498,
+    "total": 10968
+  },
+  {
+    "lo": "LO@Chikkaballapur (LO Chikkaballapur)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 7187,
+    "total": 7187
+  },
+  {
+    "lo": "LO@Davanagere (LO Davanagere)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 5710,
+    "total": 5710
+  },
+  {
+    "lo": "LO@Bengalorerural (LO Bengalorerural)",
+    "2026-04-28": 1080,
+    "2026-04-29": 817,
+    "2026-04-30": 749,
+    "2026-05-03": 716,
+    "2026-05-04": 716,
+    "2026-05-05": 685,
+    "2026-05-06": 647,
+    "total": 5410
+  },
+  {
+    "lo": "LO1@Hubli (LO1 Hubli)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 5203,
+    "total": 5203
+  },
+  {
+    "lo": "LO4@Bng (LO4 HBR Layout)",
+    "2026-04-28": 658,
+    "2026-04-29": 615,
+    "2026-04-30": 591,
+    "2026-05-03": 575,
+    "2026-05-04": 575,
+    "2026-05-05": 565,
+    "2026-05-06": 549,
+    "total": 4128
+  },
+  {
+    "lo": "LO@Ramanagar (LO Ramanagar)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 3952,
+    "total": 3952
+  },
+  {
+    "lo": "LO@Raichur (LO Raichur)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 3820,
+    "total": 3820
+  },
+  {
+    "lo": "LO@Haveri (LO Haveri)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 3160,
+    "total": 3160
+  },
+  {
+    "lo": "LO@Gulbarga (LO Gulbarga)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 2671,
+    "total": 2671
+  },
+  {
+    "lo": "LO@Yadgiri (LO Yadgiri)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 2010,
+    "total": 2010
+  },
+  {
+    "lo": "LO7@Bng (LO7 Shanti Nagar)",
+    "2026-04-28": 298,
+    "2026-04-29": 239,
+    "2026-04-30": 223,
+    "2026-05-03": 218,
+    "2026-05-04": 218,
+    "2026-05-05": 211,
+    "2026-05-06": 206,
+    "total": 1613
+  },
+  {
+    "lo": "LO@Yellapura (LO Yellapura)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 1477,
+    "total": 1477
+  },
+  {
+    "lo": "LO@Bidar (LO Bidar)",
+    "2026-04-28": 0,
+    "2026-04-29": 0,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 1283,
+    "total": 1283
+  },
+  {
+    "lo": "Unmatched",
+    "2026-04-28": 11,
+    "2026-04-29": 10,
+    "2026-04-30": 0,
+    "2026-05-03": 0,
+    "2026-05-04": 0,
+    "2026-05-05": 0,
+    "2026-05-06": 0,
+    "total": 21
+  }
+];
+    const scGrand = scData.reduce((s, r) => s + r.total, 0);
+    const scColors = ['#818cf8', '#6366f1', '#a78bfa', '#7c3aed', '#c084fc', '#8b5cf6', '#a5b4fc', '#4f46e5', '#c4b5fd', '#6d28d9', '#ef4444'];
 
-    // Render SmartCard table
-    const scBody = document.getElementById('scBody');
-    let scHtml = '';
-    scData.forEach((r, i) => {
-      scHtml += `<tr><td style="color:var(--text-dim)">${i + 1}</td><td><span class="loc-badge" style="background:${colors[i]}15;color:${colors[i]}"><span style="background:${colors[i]}" class="loc-badge"></span>${r.loc}</span></td><td class="num">${r.d28.toLocaleString('en-IN')}</td><td class="num">${r.d29.toLocaleString('en-IN')}</td><td class="num">${r.d30.toLocaleString('en-IN')}</td><td class="num" style="color:#a5b4fc">${r.total.toLocaleString('en-IN')}</td></tr>`;
-    });
-    scHtml += `<tr class="summary-row"><td></td><td style="font-weight:700">Grand Total</td><td class="num">${scT28.toLocaleString('en-IN')}</td><td class="num">${scT29.toLocaleString('en-IN')}</td><td class="num">${scT30.toLocaleString('en-IN')}</td><td class="num">${scGrand.toLocaleString('en-IN')}</td></tr>`;
-    scBody.innerHTML = scHtml;
-
-    // SmartCard Charts
-    new Chart(document.getElementById('dayChart'), { type: 'bar', data: { labels: ['28th April', '29th April', '30th April'], datasets: [{ label: 'SMS Sent', data: [scT28, scT29, scT30], backgroundColor: ['#6366f1', '#818cf8', '#a5b4fc'], borderRadius: 8, borderSkipped: false }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#1e293b' }, ticks: { color: '#64748b', callback: v => v.toLocaleString('en-IN') } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } } } });
-    new Chart(document.getElementById('scPieChart'), { type: 'doughnut', data: { labels: scData.map(r => r.loc), datasets: [{ data: scData.map(r => r.total), backgroundColor: colors, borderWidth: 0, hoverOffset: 8 }] }, options: { responsive: true, cutout: '60%', plugins: { legend: { position: 'right', labels: { color: '#94a3b8', padding: 8, usePointStyle: true, pointStyleWidth: 10, font: { size: 11 } } } } } });
-
-    // Renewal Data
-    const rnData = [
-      { d: 'Belagavi', c: 2615 }, { d: 'Davanagere', c: 2508 }, { d: 'Mysuru', c: 2314 }, { d: 'Dharwad', c: 2114 }, { d: 'Ballari', c: 2068 },
-      { d: 'Haveri', c: 1684 }, { d: 'Bagalkot', c: 1615 }, { d: 'Koppal', c: 1598 }, { d: 'Uttara Kannada', c: 1530 }, { d: 'Tumakuru', c: 1513 },
-      { d: 'Chitradurga', c: 1511 }, { d: 'Kolar', c: 1476 }, { d: 'Shivamogga', c: 1454 }, { d: 'Dakshina Kannada', c: 1368 }, { d: 'Raichur', c: 1161 },
-      { d: 'Bidar', c: 1125 }, { d: 'Vijayapura', c: 1038 }, { d: 'Chikkamagaluru', c: 1021 }, { d: 'Gadag', c: 981 }, { d: 'Hassan', c: 972 },
-      { d: 'Kalaburagi', c: 909 }, { d: 'Chamarajanagar', c: 784 }, { d: 'Vijayanagara', c: 680 }, { d: 'Bengaluru Rural', c: 680 },
-      { d: 'Udupi', c: 643 }, { d: 'Mandya', c: 559 }, { d: 'Chikkaballapur', c: 509 }, { d: 'Yadgir', c: 446 }, { d: 'Ramanagara', c: 438 },
-      { d: 'Bengaluru Urban', c: 350 }, { d: 'Unknown', c: 317 }, { d: 'Kodagu', c: 138 }
-    ];
-    const rnTotal = rnData.reduce((s, r) => s + r.c, 0), rnMax = rnData[0].c;
-
-    // Render Renewal table
-    const rnBody = document.getElementById('rnBody');
-    let rnHtml = '';
-    rnData.forEach((r, i) => {
-      const pct = (r.c / rnTotal * 100).toFixed(1), barW = (r.c / rnMax * 100).toFixed(0);
-      rnHtml += `<tr><td style="color:var(--text-dim)">${i + 1}</td><td>${r.d}</td><td class="num">${r.c.toLocaleString('en-IN')}</td><td style="color:var(--text-muted)">${pct}%</td><td><div style="background:#22d3ee15;border-radius:4px;height:8px;width:100%;overflow:hidden"><div style="height:100%;width:${barW}%;background:linear-gradient(90deg,#22d3ee,#06b6d4);border-radius:4px"></div></div></td></tr>`;
-    });
-    rnHtml += `<tr class="summary-row"><td></td><td>Grand Total</td><td class="num">${rnTotal.toLocaleString('en-IN')}</td><td>100%</td><td></td></tr>`;
-    rnBody.innerHTML = rnHtml;
-
-    // Lazy init renewal chart (only when panel is visible)
-    window.rnChartsInit = false;
-    function initRenewalCharts() {
-      const top15 = rnData.slice(0, 15);
-      new Chart(document.getElementById('renewalChart'), { type: 'bar', data: { labels: top15.map(r => r.d), datasets: [{ label: 'SMS Count', data: top15.map(r => r.c), backgroundColor: '#22d3ee40', borderColor: '#22d3ee', borderWidth: 1, borderRadius: 6, borderSkipped: false }] }, options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: '#1e293b' }, ticks: { color: '#64748b', callback: v => v.toLocaleString('en-IN') } }, y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } } } } });
-      window.rnChartsInit = true;
+    // Render SmartCard table with day filter
+    function renderScTable(filter) {
+      const scBody = document.getElementById('scBody');
+      let html = '';
+      const getData = r => filter === 'all' ? r.total : (r[filter] || 0);
+      const sorted = [...scData].sort((a, b) => getData(b) - getData(a));
+      const filteredTotal = sorted.reduce((s, r) => s + getData(r), 0);
+      const maxVal = sorted.length > 0 ? getData(sorted[0]) : 1;
+      sorted.forEach((r, i) => {
+        const val = getData(r);
+        if (val === 0) return;
+        const isUnmatched = r.lo === 'Unmatched';
+        const color = isUnmatched ? '#ef4444' : scColors[i % scColors.length];
+        const pct = (val / filteredTotal * 100).toFixed(1);
+        const barW = (val / maxVal * 100).toFixed(0);
+        html += `<tr><td style="color:var(--text-dim)">${i + 1}</td><td>${r.lo}</td><td class="num">${val.toLocaleString('en-IN')}</td><td style="color:var(--text-muted)">${pct}%</td><td><div style="background:#818cf815;border-radius:4px;height:8px;width:100%;overflow:hidden"><div style="height:100%;width:${barW}%;background:linear-gradient(90deg,#818cf8,#6366f1);border-radius:4px"></div></div></td></tr>`;
+      });
+      html += `<tr class="summary-row"><td></td><td style="font-weight:700">Grand Total</td><td class="num">${filteredTotal.toLocaleString('en-IN')}</td><td>100%</td><td></td></tr>`;
+      scBody.innerHTML = html;
     }
+    renderScTable('all');
 
-    // Tab switching
+    // Renewal Data — by Labour Officer with day-wise breakdown
+                const rnData = [
+  {
+    "lo": "LO@Mysore (LO Mysore)",
+    "2026-04-18": 171,
+    "2026-04-19": 171,
+    "2026-04-20": 173,
+    "2026-04-21": 151,
+    "2026-04-22": 161,
+    "2026-04-23": 152,
+    "2026-04-24": 134,
+    "2026-04-25": 236,
+    "2026-04-26": 189,
+    "2026-04-27": 195,
+    "2026-04-28": 217,
+    "2026-04-29": 179,
+    "2026-04-30": 184,
+    "2026-05-01": 195,
+    "2026-05-02": 338,
+    "2026-05-03": 317,
+    "2026-05-04": 185,
+    "2026-05-05": 187,
+    "2026-05-06": 188,
+    "total": 3723
+  },
+  {
+    "lo": "LO@Davanagere (LO Davanagere)",
+    "2026-04-18": 144,
+    "2026-04-19": 169,
+    "2026-04-20": 138,
+    "2026-04-21": 132,
+    "2026-04-22": 142,
+    "2026-04-23": 135,
+    "2026-04-24": 132,
+    "2026-04-25": 189,
+    "2026-04-26": 170,
+    "2026-04-27": 171,
+    "2026-04-28": 187,
+    "2026-04-29": 160,
+    "2026-04-30": 228,
+    "2026-05-01": 295,
+    "2026-05-02": 386,
+    "2026-05-03": 302,
+    "2026-05-04": 172,
+    "2026-05-05": 92,
+    "2026-05-06": 148,
+    "total": 3492
+  },
+  {
+    "lo": "LO@Haveri (LO Haveri)",
+    "2026-04-18": 100,
+    "2026-04-19": 146,
+    "2026-04-20": 96,
+    "2026-04-21": 89,
+    "2026-04-22": 113,
+    "2026-04-23": 105,
+    "2026-04-24": 101,
+    "2026-04-25": 200,
+    "2026-04-26": 149,
+    "2026-04-27": 106,
+    "2026-04-28": 194,
+    "2026-04-29": 137,
+    "2026-04-30": 147,
+    "2026-05-01": 145,
+    "2026-05-02": 164,
+    "2026-05-03": 175,
+    "2026-05-04": 136,
+    "2026-05-05": 137,
+    "2026-05-06": 117,
+    "total": 2557
+  },
+  {
+    "lo": "LO@Koppal (LO Koppal)",
+    "2026-04-18": 118,
+    "2026-04-19": 92,
+    "2026-04-20": 106,
+    "2026-04-21": 126,
+    "2026-04-22": 135,
+    "2026-04-23": 85,
+    "2026-04-24": 102,
+    "2026-04-25": 112,
+    "2026-04-26": 125,
+    "2026-04-27": 168,
+    "2026-04-28": 133,
+    "2026-04-29": 131,
+    "2026-04-30": 165,
+    "2026-05-01": 138,
+    "2026-05-02": 213,
+    "2026-05-03": 151,
+    "2026-05-04": 156,
+    "2026-05-05": 111,
+    "2026-05-06": 163,
+    "total": 2530
+  },
+  {
+    "lo": "LO@Bagalkot (LO Bagalkot)",
+    "2026-04-18": 133,
+    "2026-04-19": 91,
+    "2026-04-20": 136,
+    "2026-04-21": 113,
+    "2026-04-22": 115,
+    "2026-04-23": 87,
+    "2026-04-24": 82,
+    "2026-04-25": 205,
+    "2026-04-26": 126,
+    "2026-04-27": 130,
+    "2026-04-28": 174,
+    "2026-04-29": 103,
+    "2026-04-30": 120,
+    "2026-05-01": 104,
+    "2026-05-02": 190,
+    "2026-05-03": 195,
+    "2026-05-04": 98,
+    "2026-05-05": 123,
+    "2026-05-06": 92,
+    "total": 2417
+  },
+  {
+    "lo": "LO@Chitradurga (LO Chitradurga)",
+    "2026-04-18": 103,
+    "2026-04-19": 109,
+    "2026-04-20": 95,
+    "2026-04-21": 113,
+    "2026-04-22": 162,
+    "2026-04-23": 109,
+    "2026-04-24": 107,
+    "2026-04-25": 154,
+    "2026-04-26": 86,
+    "2026-04-27": 116,
+    "2026-04-28": 116,
+    "2026-04-29": 127,
+    "2026-04-30": 111,
+    "2026-05-01": 131,
+    "2026-05-02": 190,
+    "2026-05-03": 107,
+    "2026-05-04": 125,
+    "2026-05-05": 132,
+    "2026-05-06": 119,
+    "total": 2312
+  },
+  {
+    "lo": "LO@Kolar (LO Kolar)",
+    "2026-04-18": 105,
+    "2026-04-19": 117,
+    "2026-04-20": 118,
+    "2026-04-21": 88,
+    "2026-04-22": 107,
+    "2026-04-23": 103,
+    "2026-04-24": 130,
+    "2026-04-25": 115,
+    "2026-04-26": 168,
+    "2026-04-27": 87,
+    "2026-04-28": 104,
+    "2026-04-29": 90,
+    "2026-04-30": 144,
+    "2026-05-01": 100,
+    "2026-05-02": 130,
+    "2026-05-03": 131,
+    "2026-05-04": 149,
+    "2026-05-05": 103,
+    "2026-05-06": 124,
+    "total": 2213
+  },
+  {
+    "lo": "LO@Vijayanagar (LO Vijayanagar)",
+    "2026-04-18": 94,
+    "2026-04-19": 99,
+    "2026-04-20": 112,
+    "2026-04-21": 113,
+    "2026-04-22": 123,
+    "2026-04-23": 88,
+    "2026-04-24": 92,
+    "2026-04-25": 95,
+    "2026-04-26": 120,
+    "2026-04-27": 109,
+    "2026-04-28": 139,
+    "2026-04-29": 118,
+    "2026-04-30": 143,
+    "2026-05-01": 125,
+    "2026-05-02": 145,
+    "2026-05-03": 172,
+    "2026-05-04": 120,
+    "2026-05-05": 87,
+    "2026-05-06": 98,
+    "total": 2192
+  },
+  {
+    "lo": "LO2@Belgaum (LO2 Belgaum)",
+    "2026-04-18": 114,
+    "2026-04-19": 97,
+    "2026-04-20": 109,
+    "2026-04-21": 97,
+    "2026-04-22": 91,
+    "2026-04-23": 112,
+    "2026-04-24": 102,
+    "2026-04-25": 121,
+    "2026-04-26": 156,
+    "2026-04-27": 136,
+    "2026-04-28": 125,
+    "2026-04-29": 202,
+    "2026-04-30": 114,
+    "2026-05-01": 103,
+    "2026-05-02": 84,
+    "2026-05-03": 115,
+    "2026-05-04": 86,
+    "2026-05-05": 101,
+    "2026-05-06": 92,
+    "total": 2157
+  },
+  {
+    "lo": "LO2@Hubli (LO2 Hubli)",
+    "2026-04-18": 93,
+    "2026-04-19": 94,
+    "2026-04-20": 87,
+    "2026-04-21": 86,
+    "2026-04-22": 103,
+    "2026-04-23": 82,
+    "2026-04-24": 95,
+    "2026-04-25": 138,
+    "2026-04-26": 113,
+    "2026-04-27": 125,
+    "2026-04-28": 104,
+    "2026-04-29": 145,
+    "2026-04-30": 113,
+    "2026-05-01": 120,
+    "2026-05-02": 136,
+    "2026-05-03": 140,
+    "2026-05-04": 121,
+    "2026-05-05": 90,
+    "2026-05-06": 100,
+    "total": 2085
+  },
+  {
+    "lo": "LO@Shimoga (LO Shimoga)",
+    "2026-04-18": 100,
+    "2026-04-19": 128,
+    "2026-04-20": 119,
+    "2026-04-21": 139,
+    "2026-04-22": 98,
+    "2026-04-23": 116,
+    "2026-04-24": 76,
+    "2026-04-25": 142,
+    "2026-04-26": 94,
+    "2026-04-27": 124,
+    "2026-04-28": 117,
+    "2026-04-29": 97,
+    "2026-04-30": 103,
+    "2026-05-01": 107,
+    "2026-05-02": 136,
+    "2026-05-03": 128,
+    "2026-05-04": 101,
+    "2026-05-05": 61,
+    "2026-05-06": 77,
+    "total": 2063
+  },
+  {
+    "lo": "LO@Raichur (LO Raichur)",
+    "2026-04-18": 67,
+    "2026-04-19": 93,
+    "2026-04-20": 72,
+    "2026-04-21": 69,
+    "2026-04-22": 110,
+    "2026-04-23": 59,
+    "2026-04-24": 43,
+    "2026-04-25": 115,
+    "2026-04-26": 88,
+    "2026-04-27": 104,
+    "2026-04-28": 114,
+    "2026-04-29": 115,
+    "2026-04-30": 114,
+    "2026-05-01": 50,
+    "2026-05-02": 85,
+    "2026-05-03": 112,
+    "2026-05-04": 110,
+    "2026-05-05": 103,
+    "2026-05-06": 99,
+    "total": 1722
+  },
+  {
+    "lo": "LO@Bidar (LO Bidar)",
+    "2026-04-18": 92,
+    "2026-04-19": 85,
+    "2026-04-20": 78,
+    "2026-04-21": 49,
+    "2026-04-22": 67,
+    "2026-04-23": 52,
+    "2026-04-24": 74,
+    "2026-04-25": 113,
+    "2026-04-26": 145,
+    "2026-04-27": 93,
+    "2026-04-28": 91,
+    "2026-04-29": 93,
+    "2026-04-30": 93,
+    "2026-05-01": 82,
+    "2026-05-02": 92,
+    "2026-05-03": 56,
+    "2026-05-04": 73,
+    "2026-05-05": 123,
+    "2026-05-06": 88,
+    "total": 1639
+  },
+  {
+    "lo": "LO@Vijayapura (LO Vijayapura)",
+    "2026-04-18": 69,
+    "2026-04-19": 80,
+    "2026-04-20": 72,
+    "2026-04-21": 57,
+    "2026-04-22": 65,
+    "2026-04-23": 63,
+    "2026-04-24": 60,
+    "2026-04-25": 123,
+    "2026-04-26": 99,
+    "2026-04-27": 100,
+    "2026-04-28": 70,
+    "2026-04-29": 77,
+    "2026-04-30": 104,
+    "2026-05-01": 84,
+    "2026-05-02": 72,
+    "2026-05-03": 157,
+    "2026-05-04": 109,
+    "2026-05-05": 88,
+    "2026-05-06": 76,
+    "total": 1625
+  },
+  {
+    "lo": "LO@Gadag (LO Gadag)",
+    "2026-04-18": 61,
+    "2026-04-19": 86,
+    "2026-04-20": 73,
+    "2026-04-21": 70,
+    "2026-04-22": 65,
+    "2026-04-23": 77,
+    "2026-04-24": 71,
+    "2026-04-25": 71,
+    "2026-04-26": 81,
+    "2026-04-27": 97,
+    "2026-04-28": 74,
+    "2026-04-29": 75,
+    "2026-04-30": 81,
+    "2026-05-01": 92,
+    "2026-05-02": 104,
+    "2026-05-03": 93,
+    "2026-05-04": 126,
+    "2026-05-05": 76,
+    "2026-05-06": 66,
+    "total": 1539
+  },
+  {
+    "lo": "LO1@Belgaum (LO1 Belgaum)",
+    "2026-04-18": 55,
+    "2026-04-19": 73,
+    "2026-04-20": 91,
+    "2026-04-21": 75,
+    "2026-04-22": 88,
+    "2026-04-23": 75,
+    "2026-04-24": 72,
+    "2026-04-25": 69,
+    "2026-04-26": 101,
+    "2026-04-27": 88,
+    "2026-04-28": 76,
+    "2026-04-29": 85,
+    "2026-04-30": 84,
+    "2026-05-01": 74,
+    "2026-05-02": 114,
+    "2026-05-03": 76,
+    "2026-05-04": 84,
+    "2026-05-05": 56,
+    "2026-05-06": 91,
+    "total": 1527
+  },
+  {
+    "lo": "LO@Chikkamagalur (LO Chikkamagalur)",
+    "2026-04-18": 78,
+    "2026-04-19": 79,
+    "2026-04-20": 67,
+    "2026-04-21": 55,
+    "2026-04-22": 88,
+    "2026-04-23": 70,
+    "2026-04-24": 71,
+    "2026-04-25": 116,
+    "2026-04-26": 88,
+    "2026-04-27": 91,
+    "2026-04-28": 72,
+    "2026-04-29": 71,
+    "2026-04-30": 75,
+    "2026-05-01": 81,
+    "2026-05-02": 76,
+    "2026-05-03": 81,
+    "2026-05-04": 49,
+    "2026-05-05": 88,
+    "2026-05-06": 71,
+    "total": 1467
+  },
+  {
+    "lo": "LO@Hassan (LO Hassan)",
+    "2026-04-18": 71,
+    "2026-04-19": 64,
+    "2026-04-20": 75,
+    "2026-04-21": 52,
+    "2026-04-22": 102,
+    "2026-04-23": 55,
+    "2026-04-24": 73,
+    "2026-04-25": 65,
+    "2026-04-26": 78,
+    "2026-04-27": 87,
+    "2026-04-28": 71,
+    "2026-04-29": 89,
+    "2026-04-30": 89,
+    "2026-05-01": 71,
+    "2026-05-02": 97,
+    "2026-05-03": 84,
+    "2026-05-04": 86,
+    "2026-05-05": 56,
+    "2026-05-06": 98,
+    "total": 1463
+  },
+  {
+    "lo": "LO@Uttarakannada (LO Uttarakannada)",
+    "2026-04-18": 68,
+    "2026-04-19": 56,
+    "2026-04-20": 61,
+    "2026-04-21": 46,
+    "2026-04-22": 66,
+    "2026-04-23": 81,
+    "2026-04-24": 80,
+    "2026-04-25": 85,
+    "2026-04-26": 60,
+    "2026-04-27": 82,
+    "2026-04-28": 81,
+    "2026-04-29": 81,
+    "2026-04-30": 91,
+    "2026-05-01": 78,
+    "2026-05-02": 81,
+    "2026-05-03": 88,
+    "2026-05-04": 82,
+    "2026-05-05": 66,
+    "2026-05-06": 98,
+    "total": 1431
+  },
+  {
+    "lo": "LO@Tumkur (LO Tumkur)",
+    "2026-04-18": 73,
+    "2026-04-19": 79,
+    "2026-04-20": 67,
+    "2026-04-21": 41,
+    "2026-04-22": 60,
+    "2026-04-23": 44,
+    "2026-04-24": 58,
+    "2026-04-25": 87,
+    "2026-04-26": 81,
+    "2026-04-27": 79,
+    "2026-04-28": 64,
+    "2026-04-29": 101,
+    "2026-04-30": 86,
+    "2026-05-01": 81,
+    "2026-05-02": 90,
+    "2026-05-03": 68,
+    "2026-05-04": 77,
+    "2026-05-05": 50,
+    "2026-05-06": 74,
+    "total": 1360
+  },
+  {
+    "lo": "LO@Gulbarga (LO Gulbarga)",
+    "2026-04-18": 59,
+    "2026-04-19": 69,
+    "2026-04-20": 71,
+    "2026-04-21": 52,
+    "2026-04-22": 54,
+    "2026-04-23": 40,
+    "2026-04-24": 36,
+    "2026-04-25": 74,
+    "2026-04-26": 111,
+    "2026-04-27": 113,
+    "2026-04-28": 74,
+    "2026-04-29": 80,
+    "2026-04-30": 75,
+    "2026-05-01": 67,
+    "2026-05-02": 64,
+    "2026-05-03": 78,
+    "2026-05-04": 57,
+    "2026-05-05": 84,
+    "2026-05-06": 51,
+    "total": 1309
+  },
+  {
+    "lo": "LO@Chamarajnagar (LO Chamarajnagar)",
+    "2026-04-18": 44,
+    "2026-04-19": 57,
+    "2026-04-20": 50,
+    "2026-04-21": 39,
+    "2026-04-22": 61,
+    "2026-04-23": 60,
+    "2026-04-24": 67,
+    "2026-04-25": 70,
+    "2026-04-26": 67,
+    "2026-04-27": 78,
+    "2026-04-28": 59,
+    "2026-04-29": 59,
+    "2026-04-30": 74,
+    "2026-05-01": 86,
+    "2026-05-02": 71,
+    "2026-05-03": 115,
+    "2026-05-04": 50,
+    "2026-05-05": 52,
+    "2026-05-06": 92,
+    "total": 1251
+  },
+  {
+    "lo": "LO2@Mangalore (LO2 Mangalore)",
+    "2026-04-18": 44,
+    "2026-04-19": 73,
+    "2026-04-20": 58,
+    "2026-04-21": 51,
+    "2026-04-22": 69,
+    "2026-04-23": 60,
+    "2026-04-24": 60,
+    "2026-04-25": 67,
+    "2026-04-26": 53,
+    "2026-04-27": 60,
+    "2026-04-28": 51,
+    "2026-04-29": 62,
+    "2026-04-30": 38,
+    "2026-05-01": 58,
+    "2026-05-02": 56,
+    "2026-05-03": 71,
+    "2026-05-04": 68,
+    "2026-05-05": 71,
+    "2026-05-06": 50,
+    "total": 1120
+  },
+  {
+    "lo": "LO@Ballary (LO Ballary)",
+    "2026-04-18": 33,
+    "2026-04-19": 32,
+    "2026-04-20": 34,
+    "2026-04-21": 69,
+    "2026-04-22": 33,
+    "2026-04-23": 60,
+    "2026-04-24": 40,
+    "2026-04-25": 44,
+    "2026-04-26": 67,
+    "2026-04-27": 46,
+    "2026-04-28": 76,
+    "2026-04-29": 50,
+    "2026-04-30": 65,
+    "2026-05-01": 64,
+    "2026-05-02": 88,
+    "2026-05-03": 94,
+    "2026-05-04": 56,
+    "2026-05-05": 59,
+    "2026-05-06": 55,
+    "total": 1065
+  },
+  {
+    "lo": "LO1@Hubli (LO1 Hubli)",
+    "2026-04-18": 58,
+    "2026-04-19": 45,
+    "2026-04-20": 64,
+    "2026-04-21": 62,
+    "2026-04-22": 61,
+    "2026-04-23": 46,
+    "2026-04-24": 56,
+    "2026-04-25": 91,
+    "2026-04-26": 32,
+    "2026-04-27": 54,
+    "2026-04-28": 46,
+    "2026-04-29": 58,
+    "2026-04-30": 57,
+    "2026-05-01": 71,
+    "2026-05-02": 58,
+    "2026-05-03": 85,
+    "2026-05-04": 48,
+    "2026-05-05": 38,
+    "2026-05-06": 34,
+    "total": 1064
+  },
+  {
+    "lo": "LO@Udupi (LO Udupi)",
+    "2026-04-18": 43,
+    "2026-04-19": 58,
+    "2026-04-20": 55,
+    "2026-04-21": 40,
+    "2026-04-22": 64,
+    "2026-04-23": 43,
+    "2026-04-24": 41,
+    "2026-04-25": 43,
+    "2026-04-26": 44,
+    "2026-04-27": 39,
+    "2026-04-28": 54,
+    "2026-04-29": 58,
+    "2026-04-30": 60,
+    "2026-05-01": 50,
+    "2026-05-02": 43,
+    "2026-05-03": 47,
+    "2026-05-04": 38,
+    "2026-05-05": 53,
+    "2026-05-06": 87,
+    "total": 960
+  },
+  {
+    "lo": "LO@Madhugiri (LO Madhugiri)",
+    "2026-04-18": 39,
+    "2026-04-19": 24,
+    "2026-04-20": 43,
+    "2026-04-21": 27,
+    "2026-04-22": 43,
+    "2026-04-23": 43,
+    "2026-04-24": 30,
+    "2026-04-25": 44,
+    "2026-04-26": 75,
+    "2026-04-27": 47,
+    "2026-04-28": 32,
+    "2026-04-29": 110,
+    "2026-04-30": 38,
+    "2026-05-01": 45,
+    "2026-05-02": 75,
+    "2026-05-03": 56,
+    "2026-05-04": 56,
+    "2026-05-05": 31,
+    "2026-05-06": 44,
+    "total": 902
+  },
+  {
+    "lo": "LO1@Mangalore (LO1 Mangalore)",
+    "2026-04-18": 45,
+    "2026-04-19": 48,
+    "2026-04-20": 39,
+    "2026-04-21": 46,
+    "2026-04-22": 47,
+    "2026-04-23": 43,
+    "2026-04-24": 27,
+    "2026-04-25": 53,
+    "2026-04-26": 45,
+    "2026-04-27": 58,
+    "2026-04-28": 56,
+    "2026-04-29": 65,
+    "2026-04-30": 50,
+    "2026-05-01": 40,
+    "2026-05-02": 74,
+    "2026-05-03": 35,
+    "2026-05-04": 35,
+    "2026-05-05": 42,
+    "2026-05-06": 51,
+    "total": 899
+  },
+  {
+    "lo": "LO@Mandya (LO Mandya)",
+    "2026-04-18": 23,
+    "2026-04-19": 39,
+    "2026-04-20": 52,
+    "2026-04-21": 32,
+    "2026-04-22": 43,
+    "2026-04-23": 40,
+    "2026-04-24": 43,
+    "2026-04-25": 65,
+    "2026-04-26": 64,
+    "2026-04-27": 30,
+    "2026-04-28": 27,
+    "2026-04-29": 53,
+    "2026-04-30": 48,
+    "2026-05-01": 55,
+    "2026-05-02": 69,
+    "2026-05-03": 54,
+    "2026-05-04": 44,
+    "2026-05-05": 36,
+    "2026-05-06": 53,
+    "total": 870
+  },
+  {
+    "lo": "LO@Yellapura (LO Yellapura)",
+    "2026-04-18": 44,
+    "2026-04-19": 61,
+    "2026-04-20": 41,
+    "2026-04-21": 19,
+    "2026-04-22": 57,
+    "2026-04-23": 38,
+    "2026-04-24": 45,
+    "2026-04-25": 36,
+    "2026-04-26": 39,
+    "2026-04-27": 44,
+    "2026-04-28": 38,
+    "2026-04-29": 70,
+    "2026-04-30": 59,
+    "2026-05-01": 41,
+    "2026-05-02": 44,
+    "2026-05-03": 52,
+    "2026-05-04": 58,
+    "2026-05-05": 32,
+    "2026-05-06": 49,
+    "total": 867
+  },
+  {
+    "lo": "LO@Chikkaballapur (LO Chikkaballapur)",
+    "2026-04-18": 55,
+    "2026-04-19": 33,
+    "2026-04-20": 25,
+    "2026-04-21": 21,
+    "2026-04-22": 30,
+    "2026-04-23": 39,
+    "2026-04-24": 27,
+    "2026-04-25": 69,
+    "2026-04-26": 47,
+    "2026-04-27": 32,
+    "2026-04-28": 28,
+    "2026-04-29": 49,
+    "2026-04-30": 55,
+    "2026-05-01": 33,
+    "2026-05-02": 75,
+    "2026-05-03": 80,
+    "2026-05-04": 29,
+    "2026-05-05": 30,
+    "2026-05-06": 35,
+    "total": 792
+  },
+  {
+    "lo": "LO1@Bng (LO1 Makali)",
+    "2026-04-18": 19,
+    "2026-04-19": 53,
+    "2026-04-20": 39,
+    "2026-04-21": 25,
+    "2026-04-22": 26,
+    "2026-04-23": 30,
+    "2026-04-24": 17,
+    "2026-04-25": 45,
+    "2026-04-26": 27,
+    "2026-04-27": 34,
+    "2026-04-28": 47,
+    "2026-04-29": 35,
+    "2026-04-30": 32,
+    "2026-05-01": 30,
+    "2026-05-02": 97,
+    "2026-05-03": 63,
+    "2026-05-04": 31,
+    "2026-05-05": 25,
+    "2026-05-06": 31,
+    "total": 706
+  },
+  {
+    "lo": "LO@Yadgiri (LO Yadgiri)",
+    "2026-04-18": 21,
+    "2026-04-19": 27,
+    "2026-04-20": 33,
+    "2026-04-21": 27,
+    "2026-04-22": 22,
+    "2026-04-23": 19,
+    "2026-04-24": 25,
+    "2026-04-25": 57,
+    "2026-04-26": 50,
+    "2026-04-27": 38,
+    "2026-04-28": 54,
+    "2026-04-29": 37,
+    "2026-04-30": 36,
+    "2026-05-01": 37,
+    "2026-05-02": 61,
+    "2026-05-03": 32,
+    "2026-05-04": 49,
+    "2026-05-05": 26,
+    "2026-05-06": 33,
+    "total": 684
+  },
+  {
+    "lo": "LO@Ramanagar (LO Ramanagar)",
+    "2026-04-18": 36,
+    "2026-04-19": 26,
+    "2026-04-20": 17,
+    "2026-04-21": 30,
+    "2026-04-22": 24,
+    "2026-04-23": 25,
+    "2026-04-24": 35,
+    "2026-04-25": 30,
+    "2026-04-26": 85,
+    "2026-04-27": 28,
+    "2026-04-28": 30,
+    "2026-04-29": 28,
+    "2026-04-30": 45,
+    "2026-05-01": 55,
+    "2026-05-02": 51,
+    "2026-05-03": 40,
+    "2026-05-04": 32,
+    "2026-05-05": 28,
+    "2026-05-06": 35,
+    "total": 680
+  },
+  {
+    "lo": "LO2@Bng (LO2 Kengeri)",
+    "2026-04-18": 34,
+    "2026-04-19": 50,
+    "2026-04-20": 48,
+    "2026-04-21": 22,
+    "2026-04-22": 17,
+    "2026-04-23": 14,
+    "2026-04-24": 16,
+    "2026-04-25": 45,
+    "2026-04-26": 66,
+    "2026-04-27": 31,
+    "2026-04-28": 29,
+    "2026-04-29": 42,
+    "2026-04-30": 24,
+    "2026-05-01": 36,
+    "2026-05-02": 40,
+    "2026-05-03": 44,
+    "2026-05-04": 43,
+    "2026-05-05": 37,
+    "2026-05-06": 27,
+    "total": 665
+  },
+  {
+    "lo": "LO3@Bng (LO3 Marathalli)",
+    "2026-04-18": 17,
+    "2026-04-19": 100,
+    "2026-04-20": 83,
+    "2026-04-21": 23,
+    "2026-04-22": 9,
+    "2026-04-23": 5,
+    "2026-04-24": 10,
+    "2026-04-25": 12,
+    "2026-04-26": 24,
+    "2026-04-27": 25,
+    "2026-04-28": 8,
+    "2026-04-29": 10,
+    "2026-04-30": 9,
+    "2026-05-01": 6,
+    "2026-05-02": 126,
+    "2026-05-03": 10,
+    "2026-05-04": 1,
+    "2026-05-05": 15,
+    "2026-05-06": 53,
+    "total": 546
+  },
+  {
+    "lo": "LO@Bengalorerural (LO Bengalorerural)",
+    "2026-04-18": 18,
+    "2026-04-19": 24,
+    "2026-04-20": 27,
+    "2026-04-21": 21,
+    "2026-04-22": 19,
+    "2026-04-23": 15,
+    "2026-04-24": 22,
+    "2026-04-25": 45,
+    "2026-04-26": 24,
+    "2026-04-27": 32,
+    "2026-04-28": 35,
+    "2026-04-29": 43,
+    "2026-04-30": 25,
+    "2026-05-01": 21,
+    "2026-05-02": 24,
+    "2026-05-03": 58,
+    "2026-05-04": 25,
+    "2026-05-05": 18,
+    "2026-05-06": 25,
+    "total": 521
+  },
+  {
+    "lo": "LO5@Bng (LO5 RT Nagar)",
+    "2026-04-18": 16,
+    "2026-04-19": 15,
+    "2026-04-20": 5,
+    "2026-04-21": 12,
+    "2026-04-22": 47,
+    "2026-04-23": 22,
+    "2026-04-24": 21,
+    "2026-04-25": 16,
+    "2026-04-26": 19,
+    "2026-04-27": 38,
+    "2026-04-28": 14,
+    "2026-04-29": 73,
+    "2026-04-30": 26,
+    "2026-05-01": 16,
+    "2026-05-02": 25,
+    "2026-05-03": 26,
+    "2026-05-04": 46,
+    "2026-05-05": 12,
+    "2026-05-06": 27,
+    "total": 476
+  },
+  {
+    "lo": "LO8@Bng (LO8 Jakkur)",
+    "2026-04-18": 8,
+    "2026-04-19": 8,
+    "2026-04-20": 15,
+    "2026-04-21": 4,
+    "2026-04-22": 5,
+    "2026-04-23": 7,
+    "2026-04-24": 14,
+    "2026-04-25": 15,
+    "2026-04-26": 7,
+    "2026-04-27": 7,
+    "2026-04-28": 8,
+    "2026-04-29": 5,
+    "2026-04-30": 3,
+    "2026-05-01": 14,
+    "2026-05-02": 15,
+    "2026-05-03": 23,
+    "2026-05-04": 7,
+    "2026-05-05": 9,
+    "2026-05-06": 129,
+    "total": 303
+  },
+  {
+    "lo": "LO4@Bng (LO4 HBR Layout)",
+    "2026-04-18": 17,
+    "2026-04-19": 16,
+    "2026-04-20": 12,
+    "2026-04-21": 8,
+    "2026-04-22": 11,
+    "2026-04-23": 8,
+    "2026-04-24": 4,
+    "2026-04-25": 16,
+    "2026-04-26": 22,
+    "2026-04-27": 12,
+    "2026-04-28": 19,
+    "2026-04-29": 4,
+    "2026-04-30": 11,
+    "2026-05-01": 14,
+    "2026-05-02": 17,
+    "2026-05-03": 9,
+    "2026-05-04": 13,
+    "2026-05-05": 10,
+    "2026-05-06": 7,
+    "total": 230
+  },
+  {
+    "lo": "LO@Madikeri (LO Madikeri)",
+    "2026-04-18": 8,
+    "2026-04-19": 2,
+    "2026-04-20": 11,
+    "2026-04-21": 11,
+    "2026-04-22": 14,
+    "2026-04-23": 13,
+    "2026-04-24": 7,
+    "2026-04-25": 15,
+    "2026-04-26": 7,
+    "2026-04-27": 7,
+    "2026-04-28": 5,
+    "2026-04-29": 11,
+    "2026-04-30": 27,
+    "2026-05-01": 10,
+    "2026-05-02": 14,
+    "2026-05-03": 20,
+    "2026-05-04": 23,
+    "2026-05-05": 6,
+    "2026-05-06": 18,
+    "total": 229
+  },
+  {
+    "lo": "LO6@Bng (LO6 Chandapura)",
+    "2026-04-18": 15,
+    "2026-04-19": 2,
+    "2026-04-20": 2,
+    "2026-04-21": 3,
+    "2026-04-22": 5,
+    "2026-04-23": 6,
+    "2026-04-24": 5,
+    "2026-04-25": 9,
+    "2026-04-26": 7,
+    "2026-04-27": 15,
+    "2026-04-28": 18,
+    "2026-04-29": 31,
+    "2026-04-30": 23,
+    "2026-05-01": 3,
+    "2026-05-02": 9,
+    "2026-05-03": 11,
+    "2026-05-04": 3,
+    "2026-05-05": 5,
+    "2026-05-06": 10,
+    "total": 182
+  },
+  {
+    "lo": "LO7@Bng (LO7 Shanti Nagar)",
+    "2026-04-18": 7,
+    "2026-04-19": 22,
+    "2026-04-20": 5,
+    "2026-04-21": 5,
+    "2026-04-22": 4,
+    "2026-04-23": 1,
+    "2026-04-24": 5,
+    "2026-04-25": 16,
+    "2026-04-26": 23,
+    "2026-04-27": 6,
+    "2026-04-28": 11,
+    "2026-04-29": 8,
+    "2026-04-30": 16,
+    "2026-05-01": 5,
+    "2026-05-02": 6,
+    "2026-05-03": 10,
+    "2026-05-04": 5,
+    "2026-05-05": 8,
+    "2026-05-06": 7,
+    "total": 170
+  },
+  {
+    "lo": "Unmatched",
+    "2026-04-18": 2,
+    "2026-04-19": 1,
+    "2026-04-20": 2,
+    "2026-04-21": 1,
+    "2026-04-22": 3,
+    "2026-04-23": 2,
+    "2026-04-24": 1,
+    "2026-04-25": 0,
+    "2026-04-26": 1,
+    "2026-04-27": 3,
+    "2026-04-28": 1,
+    "2026-04-29": 1,
+    "2026-04-30": 0,
+    "2026-05-01": 2,
+    "2026-05-02": 2,
+    "2026-05-03": 1,
+    "2026-05-04": 2,
+    "2026-05-05": 0,
+    "2026-05-06": 4,
+    "total": 29
+  }
+];
+    const rnTotal = rnData.reduce((s, r) => s + r.total, 0);
+
+    // Render Renewal table with day filter
+    function renderRnTable(filter) {
+      const rnBody = document.getElementById('rnBody');
+      let html = '';
+      // Get values based on filter
+      const getData = r => filter === 'all' ? r.total : (r[filter] || 0);
+      // Sort by current filter value
+      const sorted = [...rnData].sort((a, b) => getData(b) - getData(a));
+      const filteredTotal = sorted.reduce((s, r) => s + getData(r), 0);
+      const maxVal = sorted.length > 0 ? getData(sorted[0]) : 1;
+      sorted.forEach((r, i) => {
+        const val = getData(r);
+        if (val === 0) return;
+        const pct = (val / filteredTotal * 100).toFixed(1);
+        const barW = (val / maxVal * 100).toFixed(0);
+        html += `<tr><td style="color:var(--text-dim)">${i + 1}</td><td>${r.lo}</td><td class="num">${val.toLocaleString('en-IN')}</td><td style="color:var(--text-muted)">${pct}%</td><td><div style="background:#22d3ee15;border-radius:4px;height:8px;width:100%;overflow:hidden"><div style="height:100%;width:${barW}%;background:linear-gradient(90deg,#22d3ee,#06b6d4);border-radius:4px"></div></div></td></tr>`;
+      });
+      html += `<tr class="summary-row"><td></td><td>Grand Total</td><td class="num">${filteredTotal.toLocaleString('en-IN')}</td><td>100%</td><td></td></tr>`;
+      rnBody.innerHTML = html;
+    }
+    renderRnTable('all');
+
+    // Tab switching — SmartCard
     document.querySelectorAll('#scTabs .tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('#scTabs .tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
+        renderScTable(tab.dataset.day);
       });
     });
+
+    // Tab switching — Renewal
+    document.querySelectorAll('#rnTabs .tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('#rnTabs .tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        renderRnTable(tab.dataset.day);
+      });
+    });
+
+    // Theme toggle logic
+    const themeToggleBtn = document.getElementById('themeToggle');
+    const themeToggleIcon = document.getElementById('themeToggleIcon');
+    const themeToggleText = document.getElementById('themeToggleText');
+
+    const savedTheme = localStorage.getItem('sms-dashboard-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateToggleUI(savedTheme);
+
+    themeToggleBtn.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('sms-dashboard-theme', newTheme);
+      updateToggleUI(newTheme);
+    });
+
+    function updateToggleUI(theme) {
+      if (theme === 'light') {
+        themeToggleIcon.textContent = '🌙';
+      } else {
+        themeToggleIcon.textContent = '☀️';
+      }
+    }
   </script>
 </body>
 

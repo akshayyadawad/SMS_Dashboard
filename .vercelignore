@@ -1,0 +1,10 @@
+New_Smartcard_Data.xlsx
+Renewal_30days_from_Apr18.xlsx
+*.csv
+*.pyc
+__pycache__/
+SmartCard/
+generate_report.py
+dashboard_data.json
+.DS_Store
+.git
